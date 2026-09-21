@@ -88,5 +88,13 @@ namespace InventoryService.Domain.Exceptions
         {
             public Guid OrderId { get; } = orderId;
         }
+
+        public class StockTransferQuantityExceedsRemainingException(Guid transferId, int requestedQuantity, int remainingQuantity)
+            : GeneralException($"Stock transfer '{transferId}' has only '{remainingQuantity}' remaining, but '{requestedQuantity}' was requested.")
+        {
+            public Guid TransferId { get; } = transferId;
+            public int RequestedQuantity { get; } = requestedQuantity;
+            public int RemainingQuantity { get; } = remainingQuantity;
+        }
     }
 }

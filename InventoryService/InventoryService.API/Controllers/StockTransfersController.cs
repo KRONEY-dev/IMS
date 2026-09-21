@@ -34,10 +34,10 @@ namespace InventoryService.API.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<StockTransferServiceDTOs.CompleteTransferResponseDTO>> Complete(
-            StockTransferServiceDTOs.CompleteTransferRequestDTO request, CancellationToken cancellationToken)
+        public async Task<ActionResult<StockTransferServiceDTOs.ReceiveTransferResponseDTO>> Receive(
+            StockTransferServiceDTOs.ReceiveTransferRequestDTO request, CancellationToken cancellationToken)
         {
-            return Ok(await MainService.CompleteAsync(request, cancellationToken));
+            return Ok(await MainService.ReceiveAsync(request, cancellationToken));
         }
 
         [HttpPost]

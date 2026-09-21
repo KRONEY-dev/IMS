@@ -2,6 +2,7 @@ using ApiGateway.Authentication;
 using ApiGateway.Authorization;
 using ApiGateway.Endpoints;
 using ApiGateway.Options;
+using ApiGateway.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Shared.Kernel.AspNetCore.OpenApi;
 using Shared.Kernel.Extensions;
@@ -12,8 +13,10 @@ var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
 builder.Services.ConfigureOption<JwtValidationSettings>(configuration);
 builder.Services.ConfigureOption<DocsAccessSettings>(configuration);
+builder.Services.ConfigureOption<RateLimitingSettings>(configuration);
 
 builder.Services.AddRedisAccessTokenBlacklist(configuration);
+builder.Services.AddRedisRateLimiter(configuration);
 
 builder.Services.AddReverseProxy()
     .LoadFromConfig(configuration.GetSection("ReverseProxy"));
@@ -31,6 +34,10 @@ if (app.Environment.IsDevelopment())
 {
     app.MapScalarDocumentation();
 }
+
+app.UseRouting();
+
+app.UseMiddleware<LoginRateLimitingMiddleware>();
 
 app.UseAuthentication();
 

@@ -96,9 +96,6 @@ namespace InventoryService.Application.Services
             var warehouse = await _warehouseRepository.GetByIdAsync(request.WarehouseId, cancellationToken)
                 ?? throw new NotFoundException(nameof(Warehouse), request.WarehouseId);
 
-            // TODO: якщо на складі лишились StockItem/StockThreshold/SupplierOrder/LowStockAlert —
-            // видалення впаде на рівні БД (Restrict FK) як непіймана DbUpdateException. Явну доменну
-            // перевірку додамо, коли з'являться відповідні репозиторії на цьому шарі.
             _warehouseRepository.Remove(warehouse);
             await UnitOfWork.SaveChangesAsync(cancellationToken);
 

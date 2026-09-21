@@ -77,9 +77,6 @@ namespace InventoryService.Application.Services
             var product = await _productRepository.GetByIdAsync(request.ProductId, cancellationToken)
                 ?? throw new NotFoundException(nameof(Product), request.ProductId);
 
-            // TODO: якщо на товар лишились StockItem/StockThreshold/SupplierOrderItem/LowStockAlert —
-            // видалення впаде на рівні БД (Restrict FK) як непіймана DbUpdateException. Явну доменну
-            // перевірку додамо, коли з'являться відповідні репозиторії на цьому шарі.
             _productRepository.Remove(product);
             await UnitOfWork.SaveChangesAsync(cancellationToken);
 

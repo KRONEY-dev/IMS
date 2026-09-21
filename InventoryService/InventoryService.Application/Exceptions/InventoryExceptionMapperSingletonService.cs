@@ -13,6 +13,7 @@ namespace InventoryService.Application.Exceptions
                 InvalidWorkingHoursException => HttpStatusCode.BadRequest,
                 NegativeValueException => HttpStatusCode.BadRequest,
                 SupplierOrderPartialReceiptNotSupportedException => HttpStatusCode.BadRequest,
+                StockTransferQuantityExceedsRemainingException => HttpStatusCode.BadRequest,
                 WarehouseNameAlreadyTakenException => HttpStatusCode.Conflict,
                 StockTransferNotInTransitException => HttpStatusCode.Conflict,
                 SupplierOrderNotCreatedException => HttpStatusCode.Conflict,

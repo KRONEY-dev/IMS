@@ -51,12 +51,15 @@ namespace InventoryService.Application.Validators
         }
     }
 
-    public class CompleteTransferRequestDTOValidator : AbstractValidator<StockTransferServiceDTOs.CompleteTransferRequestDTO>
+    public class ReceiveTransferRequestDTOValidator : AbstractValidator<StockTransferServiceDTOs.ReceiveTransferRequestDTO>
     {
-        public CompleteTransferRequestDTOValidator()
+        public ReceiveTransferRequestDTOValidator()
         {
             RuleFor(request => request.StockTransferId)
                 .NotEmpty();
+
+            RuleFor(request => request.Quantity)
+                .GreaterThan(0);
         }
     }
 

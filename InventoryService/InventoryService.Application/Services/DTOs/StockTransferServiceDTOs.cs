@@ -15,8 +15,8 @@ namespace InventoryService.Application.Services.DTOs
 
         public record GetStockTransferByIdRequestDTO(Guid StockTransferId);
 
-        public record CompleteTransferRequestDTO(Guid StockTransferId);
-        public record CompleteTransferResponseDTO();
+        public record ReceiveTransferRequestDTO(Guid StockTransferId, int Quantity);
+        public record ReceiveTransferResponseDTO(int RemainingQuantity, bool FullyReceived);
 
         public record CancelTransferRequestDTO(Guid StockTransferId);
         public record CancelTransferResponseDTO();

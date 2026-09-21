@@ -77,9 +77,6 @@ namespace InventoryService.Application.Services
             var supplier = await _supplierRepository.GetByIdAsync(request.SupplierId, cancellationToken)
                 ?? throw new NotFoundException(nameof(Supplier), request.SupplierId);
 
-            // TODO: якщо на постачальника лишились SupplierOrder — видалення впаде на рівні БД
-            // (Restrict FK) як непіймана DbUpdateException. Явну доменну перевірку додамо, коли
-            // з'явиться відповідний репозиторій на цьому шарі.
             _supplierRepository.Remove(supplier);
             await UnitOfWork.SaveChangesAsync(cancellationToken);
 

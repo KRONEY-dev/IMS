@@ -10,7 +10,7 @@ namespace InventoryService.Application.Repositories.Interfaces
 
         IDirectOperation BuildCreateOperation(StockTransfer transfer);
 
-        IDirectOperation BuildCompleteOperation(Guid transferId, Guid performedByUserId);
+        IDirectOperation BuildReceiveOperation(Guid transferId, int receivedQuantity, Guid performedByUserId);
 
         IDirectOperation BuildCancelOperation(Guid transferId, Guid performedByUserId);
     }

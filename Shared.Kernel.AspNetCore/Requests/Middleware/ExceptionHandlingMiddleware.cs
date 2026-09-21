@@ -32,6 +32,7 @@ namespace Shared.Kernel.AspNetCore.Requests.Middleware
                 {
                     InsufficientPermissionsException => HttpStatusCode.Forbidden,
                     NotFoundException => HttpStatusCode.NotFound,
+                    ReferencedEntityInUseException => HttpStatusCode.Conflict,
                     _ => _statusMapper.Map(ex) ?? HttpStatusCode.InternalServerError
                 };
 

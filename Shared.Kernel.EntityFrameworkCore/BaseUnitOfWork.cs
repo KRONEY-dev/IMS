@@ -31,6 +31,10 @@ namespace Shared.Kernel.EntityFrameworkCore
             {
                 throw new UniqueConstraintViolationException(exception);
             }
+            catch (DbUpdateException exception) when (IsForeignKeyViolation(exception))
+            {
+                throw new ReferencedEntityInUseException(exception);
+            }
         }
 
         public virtual Task<bool> ExecuteInTransactionAsync(IDirectOperation operation, CancellationToken cancellationToken)
@@ -70,6 +74,11 @@ namespace Shared.Kernel.EntityFrameworkCore
                 await transaction.RollbackAsync(cancellationToken);
                 throw new UniqueConstraintViolationException(exception);
             }
+            catch (DbUpdateException exception) when (IsForeignKeyViolation(exception))
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                throw new ReferencedEntityInUseException(exception);
+            }
             catch
             {
                 await transaction.RollbackAsync(cancellationToken);
@@ -80,6 +89,11 @@ namespace Shared.Kernel.EntityFrameworkCore
         private static bool IsUniqueViolation(DbUpdateException exception)
         {
             return exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
+        }
+
+        private static bool IsForeignKeyViolation(DbUpdateException exception)
+        {
+            return exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.ForeignKeyViolation };
         }
     }
 }

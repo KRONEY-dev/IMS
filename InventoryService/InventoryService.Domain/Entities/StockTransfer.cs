@@ -62,12 +62,31 @@ namespace InventoryService.Domain.Entities
             return transfer => transfer.Id == transferId && transfer.Status == StockTransferStatus.InTransit;
         }
 
-        public readonly record struct StatusTransition(StockTransferStatus Status, Guid PerformedByUserId, DateTime PerformedAt);
-
-        public static StatusTransition CompletionTransition(Guid performedByUserId)
+        public static Expression<Func<StockTransfer, bool>> CanReceive(Guid transferId, int quantity)
         {
-            return new StatusTransition(StockTransferStatus.Completed, performedByUserId, DateTime.UtcNow);
+            return transfer => transfer.Id == transferId
+                && transfer.Status == StockTransferStatus.InTransit
+                && transfer.Quantity >= quantity;
         }
+
+        public static Expression<Func<StockTransfer, int>> RemainingQuantityAfterReceipt(int receivedQuantity)
+        {
+            return transfer => transfer.Quantity - receivedQuantity;
+        }
+
+        public static Expression<Func<StockTransfer, StockTransferStatus>> StatusAfterReceipt(int receivedQuantity)
+        {
+            return transfer => transfer.Quantity - receivedQuantity == 0
+                ? StockTransferStatus.Completed
+                : StockTransferStatus.InTransit;
+        }
+
+        public static Expression<Func<StockTransfer, DateTime?>> CompletedAtAfterReceipt(int receivedQuantity, DateTime performedAt)
+        {
+            return transfer => transfer.Quantity - receivedQuantity == 0 ? performedAt : transfer.CompletedAt;
+        }
+
+        public readonly record struct StatusTransition(StockTransferStatus Status, Guid PerformedByUserId, DateTime PerformedAt);
 
         public static StatusTransition CancellationTransition(Guid performedByUserId)
         {

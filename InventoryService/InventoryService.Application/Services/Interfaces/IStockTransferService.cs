@@ -13,8 +13,8 @@ namespace InventoryService.Application.Services.Interfaces
         Task<StockTransferServiceDTOs.StockTransferDTO> GetByIdAsync(
             StockTransferServiceDTOs.GetStockTransferByIdRequestDTO request, CancellationToken cancellationToken);
 
-        Task<StockTransferServiceDTOs.CompleteTransferResponseDTO> CompleteAsync(
-            StockTransferServiceDTOs.CompleteTransferRequestDTO request, CancellationToken cancellationToken);
+        Task<StockTransferServiceDTOs.ReceiveTransferResponseDTO> ReceiveAsync(
+            StockTransferServiceDTOs.ReceiveTransferRequestDTO request, CancellationToken cancellationToken);
 
         Task<StockTransferServiceDTOs.CancelTransferResponseDTO> CancelAsync(
             StockTransferServiceDTOs.CancelTransferRequestDTO request, CancellationToken cancellationToken);

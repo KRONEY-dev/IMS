@@ -102,8 +102,8 @@ namespace InventoryService.Application.Services
             return Mapper.Map<StockTransferServiceDTOs.StockTransferDTO>(transfer);
         }
 
-        public async Task<StockTransferServiceDTOs.CompleteTransferResponseDTO> CompleteAsync(
-            StockTransferServiceDTOs.CompleteTransferRequestDTO request, CancellationToken cancellationToken)
+        public async Task<StockTransferServiceDTOs.ReceiveTransferResponseDTO> ReceiveAsync(
+            StockTransferServiceDTOs.ReceiveTransferRequestDTO request, CancellationToken cancellationToken)
         {
             RequestContext.EnsureMinimumRole(UserRole.Worker);
 
@@ -112,6 +112,11 @@ namespace InventoryService.Application.Services
 
             RequestContext.EnsureWarehouseAccess(transfer.DestinationWarehouseId, UserRole.Manager);
 
+            if (request.Quantity > transfer.Quantity)
+            {
+                throw new StockTransferQuantityExceedsRemainingException(transfer.Id, request.Quantity, transfer.Quantity);
+            }
+
             var performedByUserId = RequestContext.UserId;
 
             var destinationItem = await _stockItemRepository.GetByWarehouseAndBatchIdAsync(
@@ -119,7 +124,7 @@ namespace InventoryService.Application.Services
 
             var operations = new List<IDirectOperation>
             {
-                _stockTransferRepository.BuildCompleteOperation(transfer.Id, performedByUserId)
+                _stockTransferRepository.BuildReceiveOperation(transfer.Id, request.Quantity, performedByUserId)
             };
 
             Guid destinationStockItemId;
@@ -127,19 +132,19 @@ namespace InventoryService.Application.Services
             if (destinationItem is not null)
             {
                 destinationStockItemId = destinationItem.Id;
-                operations.Add(_stockItemRepository.BuildIncrementOperation(destinationItem.Id, transfer.Quantity));
+                operations.Add(_stockItemRepository.BuildIncrementOperation(destinationItem.Id, request.Quantity));
             }
             else
             {
                 var newStockItem = StockItem.Create(transfer.ProductId, transfer.DestinationWarehouseId,
-                    transfer.BatchId, transfer.Quantity, transfer.Price);
+                    transfer.BatchId, request.Quantity, transfer.Price);
                 destinationStockItemId = newStockItem.Id;
                 operations.Add(_stockItemRepository.BuildCreateOperation(newStockItem));
             }
 
             var movement = StockMovement.Create(destinationStockItemId, transfer.ProductId,
                 transfer.DestinationWarehouseId, transfer.BatchId, transfer.Price, StockMovementType.In,
-                transfer.Quantity, transfer.Id, transfer.InitiatedByUserId, performedByUserId);
+                request.Quantity, transfer.Id, transfer.InitiatedByUserId, performedByUserId);
 
             operations.Add(_stockMovementRepository.BuildCreateOperation(movement));
 
@@ -153,7 +158,9 @@ namespace InventoryService.Application.Services
             await _lowStockAlertService.EvaluateAfterIncreaseAsync(
                 transfer.ProductId, transfer.DestinationWarehouseId, cancellationToken);
 
-            return new StockTransferServiceDTOs.CompleteTransferResponseDTO();
+            var remainingQuantity = transfer.Quantity - request.Quantity;
+
+            return new StockTransferServiceDTOs.ReceiveTransferResponseDTO(remainingQuantity, remainingQuantity == 0);
         }
 
         public async Task<StockTransferServiceDTOs.CancelTransferResponseDTO> CancelAsync(

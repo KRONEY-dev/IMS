@@ -22,9 +22,17 @@ namespace InventoryService.Infrastructure.Database.Repositories
             return new DirectInsert<StockTransfer>(transfer);
         }
 
-        public IDirectOperation BuildCompleteOperation(Guid transferId, Guid performedByUserId)
+        public IDirectOperation BuildReceiveOperation(Guid transferId, int receivedQuantity, Guid performedByUserId)
         {
-            return BuildStatusTransitionOperation(transferId, StockTransfer.CompletionTransition(performedByUserId));
+            var performedAt = DateTime.UtcNow;
+
+            return new DirectUpdate<StockTransfer>(
+                StockTransfer.CanReceive(transferId, receivedQuantity),
+                setters => setters
+                    .SetProperty(transfer => transfer.Quantity, StockTransfer.RemainingQuantityAfterReceipt(receivedQuantity))
+                    .SetProperty(transfer => transfer.Status, StockTransfer.StatusAfterReceipt(receivedQuantity))
+                    .SetProperty(transfer => transfer.PerformedByUserId, performedByUserId)
+                    .SetProperty(transfer => transfer.CompletedAt, StockTransfer.CompletedAtAfterReceipt(receivedQuantity, performedAt)));
         }
 
         public IDirectOperation BuildCancelOperation(Guid transferId, Guid performedByUserId)

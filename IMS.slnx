@@ -7,12 +7,14 @@
     <Project Path="AccountsService/AccountsService.Application/AccountsService.Application.csproj" Id="6ec3adeb-383e-46bd-90a7-2114ca368822" />
     <Project Path="AccountsService/AccountsService.Domain/AccountsService.Domain.csproj" Id="14718ca7-c5b8-4bb0-af3c-01721a5cdb4c" />
     <Project Path="AccountsService/AccountsService.Infrastructure/AccountsService.Infrastructure.csproj" Id="65217487-1e7b-49a7-a04b-92054ccbf409" />
+    <Project Path="AccountsService/AccountsService.Tests/AccountsService.Tests.csproj" Id="5040018b-2602-4811-90cd-9ec45090f430" />
   </Folder>
   <Folder Name="/InventoryService/">
     <Project Path="InventoryService/InventoryService.API/InventoryService.API.csproj" Id="5947f9de-1f60-4ac4-bc33-71f6b60804e9" />
     <Project Path="InventoryService/InventoryService.Application/InventoryService.Application.csproj" Id="8b6d7903-f97a-4369-941f-193647b9dbed" />
     <Project Path="InventoryService/InventoryService.Domain/InventoryService.Domain.csproj" Id="e1632ade-f0eb-4740-8a58-fb4b4f07f011" />
     <Project Path="InventoryService/InventoryService.Infrastructure/InventoryService.Infrastructure.csproj" Id="3d649431-b7e7-4e0b-87d3-6c217a981f6b" />
+    <Project Path="InventoryService/InventoryService.Tests/InventoryService.Tests.csproj" Id="8f13181d-81f5-47c8-86f2-fc4a4e7d0cb0" />
   </Folder>
   <Folder Name="/Shared/">
     <Project Path="Shared.Kernel/Shared.Kernel.csproj" Id="ae0d3e87-0f99-4b1a-b817-1d4dbbbb5269" />
