@@ -21,6 +21,7 @@
     <Project Path="Shared.Kernel.EntityFrameworkCore/Shared.Kernel.EntityFrameworkCore.csproj" Id="6333f3ba-b0c2-4b18-95c4-156a90faef94" />
     <Project Path="Shared.Kernel.AspNetCore/Shared.Kernel.AspNetCore.csproj" Id="8b0aed79-bd34-405c-bdb5-8e63abb187de" />
     <Project Path="Shared.Kernel.Redis/Shared.Kernel.Redis.csproj" Id="3e74ecac-47c4-4c79-88b5-0591c78a3bb9" />
+    <Project Path="Shared.Kernel.Quartz/Shared.Kernel.Quartz.csproj" Id="b1a3f2c8-6d4e-4a91-9c3b-7e5f0d2a8c14" />
     <Project Path="Shared.Contracts/Shared.Contracts.csproj" Id="7cc6c0ce-41c8-4649-afcf-d5d7e8e5aabd" />
   </Folder>
 </Solution>

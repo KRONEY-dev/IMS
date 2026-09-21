@@ -93,7 +93,7 @@ namespace InventoryService.Application.Services
 
             RequestContext.EnsureWarehouseAccess(order.WarehouseId, UserRole.Admin);
 
-            order.Submit();
+            order.Submit(request.ExpectedDeliveryDate);
             await UnitOfWork.SaveChangesAsync(cancellationToken);
 
             return new SupplierOrderServiceDTOs.SubmitSupplierOrderResponseDTO();
@@ -159,7 +159,7 @@ namespace InventoryService.Application.Services
         {
             return new SupplierOrderServiceDTOs.SupplierOrderDTO(order.Id, order.SupplierId, order.WarehouseId,
                 order.Status, order.CreatedByUserId, order.CreatedAt, order.SubmittedAt, order.ReceivedAt,
-                Mapper.Map<List<SupplierOrderServiceDTOs.SupplierOrderItemDTO>>(items));
+                order.ExpectedDeliveryDate, Mapper.Map<List<SupplierOrderServiceDTOs.SupplierOrderItemDTO>>(items));
         }
     }
 }

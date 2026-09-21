@@ -8,6 +8,8 @@ namespace InventoryService.Application.Repositories.Interfaces
     {
         Task<List<SupplierOrder>> GetAllAsync(CancellationToken cancellationToken);
 
+        Task<List<SupplierOrder>> GetArrivingByAsync(DateTime cutoff, CancellationToken cancellationToken);
+
         IDirectOperation BuildReceiveOperation(Guid orderId);
     }
 }

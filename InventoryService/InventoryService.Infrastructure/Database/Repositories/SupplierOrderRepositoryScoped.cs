@@ -17,6 +17,11 @@ namespace InventoryService.Infrastructure.Database.Repositories
             return MainTable.ToListAsync(cancellationToken);
         }
 
+        public Task<List<SupplierOrder>> GetArrivingByAsync(DateTime cutoff, CancellationToken cancellationToken)
+        {
+            return MainTable.Where(SupplierOrder.IsArrivingBy(cutoff)).ToListAsync(cancellationToken);
+        }
+
         public IDirectOperation BuildReceiveOperation(Guid orderId)
         {
             var transition = SupplierOrder.ReceiveTransition();

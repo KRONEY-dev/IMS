@@ -1,6 +1,8 @@
+using InventoryService.Application.Options;
 using InventoryService.Application.Repositories.Interfaces;
 using InventoryService.Infrastructure.Database;
 using InventoryService.Infrastructure.Database.Repositories;
+using InventoryService.Infrastructure.Jobs;
 using InventoryService.Infrastructure.Messaging;
 using InventoryService.Infrastructure.Options;
 using Microsoft.AspNetCore.Builder;
@@ -11,6 +13,8 @@ using Shared.Kernel.AspNetCore.Requests;
 using Shared.Kernel.AspNetCore.Requests.Middleware;
 using Shared.Kernel.Database;
 using Shared.Kernel.Extensions;
+using Shared.Kernel.Quartz;
+using Shared.Kernel.Redis;
 using Shared.Kernel.Requests;
 
 namespace InventoryService.Infrastructure
@@ -19,8 +23,9 @@ namespace InventoryService.Infrastructure
     {
         public static IServiceCollection InjectInfrastructure(this IServiceCollection services, IConfiguration configuration)
         {
-            AddServices(services, configuration);
             ConfigureOptions(services, configuration);
+            AddServices(services, configuration);
+            AddQuartzJobs(services, configuration);
 
             return services;
         }
@@ -60,11 +65,22 @@ namespace InventoryService.Infrastructure
 
             services.AddHostedService<RabbitMqOutboxPublisherHostedService>();
             services.AddHostedService<RabbitMqConsumerHostedService>();
+
+            services.AddRedisDistributedLock(configuration);
+        }
+
+        private static void AddQuartzJobs(IServiceCollection services, IConfiguration configuration)
+        {
+            services.AddQuartzWithCronJobs(quartz =>
+            {
+                quartz.AddCronJob<SupplierOrderReminderJob, SupplierOrderReminderJobSettings>(configuration);
+            });
         }
 
         private static void ConfigureOptions(IServiceCollection services, IConfiguration configuration)
         {
             services.ConfigureOption<RabbitMqSettings>(configuration);
+            services.ConfigureOption<SupplierOrderReminderJobSettings>(configuration);
         }
     }
 }

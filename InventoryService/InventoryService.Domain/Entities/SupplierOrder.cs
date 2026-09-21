@@ -24,6 +24,8 @@ namespace InventoryService.Domain.Entities
         public DateTime? SubmittedAt { get; private set; }
         public DateTime? ReceivedAt { get; private set; }
 
+        public DateTime? ExpectedDeliveryDate { get; private set; }
+
         private SupplierOrder() { }
 
         public static SupplierOrder Create(Guid supplierId, Guid warehouseId, Guid createdByUserId)
@@ -39,7 +41,7 @@ namespace InventoryService.Domain.Entities
             };
         }
 
-        public void Submit()
+        public void Submit(DateTime? expectedDeliveryDate)
         {
             if (Status != SupplierOrderStatus.Created)
             {
@@ -48,11 +50,18 @@ namespace InventoryService.Domain.Entities
 
             Status = SupplierOrderStatus.Submitted;
             SubmittedAt = DateTime.UtcNow;
+            ExpectedDeliveryDate = expectedDeliveryDate;
         }
 
         public static Expression<Func<SupplierOrder, bool>> IsSubmitted(Guid orderId)
         {
             return order => order.Id == orderId && order.Status == SupplierOrderStatus.Submitted;
+        }
+
+        public static Expression<Func<SupplierOrder, bool>> IsArrivingBy(DateTime cutoff)
+        {
+            return order => order.Status == SupplierOrderStatus.Submitted
+                && order.ExpectedDeliveryDate != null && order.ExpectedDeliveryDate <= cutoff;
         }
 
         public readonly record struct ReceiptTransition(SupplierOrderStatus Status, DateTime ReceivedAt);

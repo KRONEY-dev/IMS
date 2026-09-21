@@ -61,5 +61,10 @@ namespace AccountsService.Domain.Entities
         {
             return rt => rt.SessionId == sessionId && rt.RevokedAt == null;
         }
+
+        public static Expression<Func<RefreshToken, bool>> IsDeadOlderThan(DateTime cutoff)
+        {
+            return rt => (rt.RevokedAt != null && rt.RevokedAt < cutoff) || (rt.RevokedAt == null && rt.ExpiresAt < cutoff);
+        }
     }
 }

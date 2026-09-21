@@ -13,7 +13,7 @@ namespace InventoryService.Application.Services.DTOs
 
         public record GetSupplierOrderByIdRequestDTO(Guid SupplierOrderId);
 
-        public record SubmitSupplierOrderRequestDTO(Guid SupplierOrderId);
+        public record SubmitSupplierOrderRequestDTO(Guid SupplierOrderId, DateTime? ExpectedDeliveryDate);
         public record SubmitSupplierOrderResponseDTO();
 
         public record ReceiveSupplierOrderItemDTO(Guid SupplierOrderItemId, decimal SalePrice);
@@ -24,6 +24,6 @@ namespace InventoryService.Application.Services.DTOs
 
         public record SupplierOrderDTO(Guid Id, Guid SupplierId, Guid WarehouseId, SupplierOrderStatus Status,
             Guid CreatedByUserId, DateTime CreatedAt, DateTime? SubmittedAt, DateTime? ReceivedAt,
-            IReadOnlyList<SupplierOrderItemDTO> Items);
+            DateTime? ExpectedDeliveryDate, IReadOnlyList<SupplierOrderItemDTO> Items);
     }
 }

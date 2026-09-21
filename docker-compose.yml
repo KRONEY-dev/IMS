@@ -97,6 +97,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__Inventory: "Host=inventory-db;Port=5432;Database=inventory;Username=postgres;Password=postgres"
+      ConnectionStrings__Redis: "redis:6379"
       OpenApi__GatewayBasePath: "/inventory"
       RabbitMqSettings__HostName: "rabbitmq"
       RabbitMqSettings__Queues__InventoryEvents: "stock-quantity-changed"
@@ -104,6 +105,8 @@ services:
       inventory-db:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - ims-network

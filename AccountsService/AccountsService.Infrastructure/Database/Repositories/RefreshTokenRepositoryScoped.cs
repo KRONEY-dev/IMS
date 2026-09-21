@@ -18,5 +18,10 @@ namespace AccountsService.Infrastructure.Database.Repositories
                 RefreshToken.IsActiveInSession(sessionId),
                 setters => setters.SetProperty(rt => rt.RevokedAt, DateTime.UtcNow));
         }
+
+        public IDirectOperation BuildDeleteDeadOlderThanOperation(DateTime cutoff)
+        {
+            return new DirectDelete<RefreshToken>(RefreshToken.IsDeadOlderThan(cutoff));
+        }
     }
 }

@@ -1,7 +1,9 @@
-﻿using AccountsService.Application.Repositories.Interfaces;
+﻿using AccountsService.Application.Options;
+using AccountsService.Application.Repositories.Interfaces;
 using AccountsService.Application.Services.Interfaces;
 using AccountsService.Infrastructure.Database;
 using AccountsService.Infrastructure.Database.Repositories;
+using AccountsService.Infrastructure.Jobs;
 using AccountsService.Infrastructure.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +12,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Shared.Kernel.AspNetCore.Requests;
 using Shared.Kernel.AspNetCore.Requests.Middleware;
 using Shared.Kernel.Database;
+using Shared.Kernel.Extensions;
+using Shared.Kernel.Quartz;
 using Shared.Kernel.Redis;
 using Shared.Kernel.Requests;
 
@@ -19,8 +23,9 @@ namespace AccountsService.Infrastructure
     {
         public static IServiceCollection InjectInfrastructure(this IServiceCollection services, IConfiguration configuration)
         {
-            AddServices(services, configuration);
             ConfigureOptions(services, configuration);
+            AddServices(services, configuration);
+            AddQuartzJobs(services, configuration);
 
             return services;
         }
@@ -51,13 +56,22 @@ namespace AccountsService.Infrastructure
             services.AddSingleton<IPasswordHasherService, PasswordHasherSingletonService>();
 
             services.AddRedisAccessTokenBlacklist(configuration);
+            services.AddRedisDistributedLock(configuration);
 
             services.AddScoped<IRequestContext, RequestContextScoped>();
         }
 
+        private static void AddQuartzJobs(IServiceCollection services, IConfiguration configuration)
+        {
+            services.AddQuartzWithCronJobs(quartz =>
+            {
+                quartz.AddCronJob<RefreshTokenCleanupJob, RefreshTokenCleanupJobSettings>(configuration);
+            });
+        }
+
         private static void ConfigureOptions(IServiceCollection services, IConfiguration configuration)
         {
-
+            services.ConfigureOption<RefreshTokenCleanupJobSettings>(configuration);
         }
     }
 }
