@@ -1,0 +1,126 @@
+services:
+  accounts-db:
+    image: postgres:17
+    container_name: accounts-db
+    environment:
+      POSTGRES_DB: accounts
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - accounts-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d accounts"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ims-network
+
+  inventory-db:
+    image: postgres:17
+    container_name: inventory-db
+    environment:
+      POSTGRES_DB: inventory
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - inventory-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d inventory"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ims-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ims-network
+
+  accounts-api:
+    build:
+      context: .
+      dockerfile: AccountsService/AccountsService.API/Dockerfile
+    container_name: accounts-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Accounts: "Host=accounts-db;Port=5432;Database=accounts;Username=postgres;Password=postgres"
+      ConnectionStrings__Redis: "redis:6379"
+      OpenApi__GatewayBasePath: "/accounts"
+    depends_on:
+      accounts-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ims-network
+    # Свідомо без "ports": недоступний з хоста напряму, лише через api-gateway (розділ 5 CLAUDE.md).
+
+  inventory-api:
+    build:
+      context: .
+      dockerfile: InventoryService/InventoryService.API/Dockerfile
+    container_name: inventory-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Inventory: "Host=inventory-db;Port=5432;Database=inventory;Username=postgres;Password=postgres"
+      OpenApi__GatewayBasePath: "/inventory"
+    depends_on:
+      inventory-db:
+        condition: service_healthy
+    networks:
+      - ims-network
+    # Свідомо без "ports": недоступний з хоста напряму, лише через api-gateway (розділ 5 CLAUDE.md).
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: ApiGateway/Dockerfile
+    container_name: api-gateway
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Redis: "redis:6379"
+      ReverseProxy__Clusters__accounts-cluster__Destinations__destination1__Address: "http://accounts-api:8080"
+      ReverseProxy__Clusters__inventory-cluster__Destinations__destination1__Address: "http://inventory-api:8080"
+      DocsAccessSettings__AllowedNetworks__0: "127.0.0.1/32"
+      DocsAccessSettings__AllowedNetworks__1: "::1/128"
+      DocsAccessSettings__AllowedNetworks__2: "172.28.0.0/16"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - accounts-api
+      - inventory-api
+      - redis
+    networks:
+      - ims-network
+
+networks:
+  ims-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+volumes:
+  accounts-db-data:
+  inventory-db-data:
+  redis-data:

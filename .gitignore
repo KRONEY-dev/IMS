@@ -1,0 +1,25 @@
+bin/
+obj/
+*.user
+*.userosscache
+*.sln.docstates
+
+*.nupkg
+*.snupkg
+.nuget/
+
+[Tt]est[Rr]esult*/
+*.trx
+*.coverage
+
+.vs/
+.idea/
+.vscode/
+
+# RSA key pair for JWT signing — must never be committed
+**/Keys/*.pem
+
+docker-compose.override.yml
+
+.DS_Store
+Thumbs.db

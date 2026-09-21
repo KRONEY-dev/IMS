@@ -1,0 +1,23 @@
+<Solution>
+  <Folder Name="/ApiGateway/">
+    <Project Path="ApiGateway/ApiGateway.csproj" Id="9978118e-a376-41c1-b512-86c1a4e7c2b3" />
+  </Folder>
+  <Folder Name="/AccountsService/">
+    <Project Path="AccountsService/AccountsService.API/AccountsService.API.csproj" Id="087f3930-e97b-4a20-b6ba-c17047f7bc4f" />
+    <Project Path="AccountsService/AccountsService.Application/AccountsService.Application.csproj" Id="6ec3adeb-383e-46bd-90a7-2114ca368822" />
+    <Project Path="AccountsService/AccountsService.Domain/AccountsService.Domain.csproj" Id="14718ca7-c5b8-4bb0-af3c-01721a5cdb4c" />
+    <Project Path="AccountsService/AccountsService.Infrastructure/AccountsService.Infrastructure.csproj" Id="65217487-1e7b-49a7-a04b-92054ccbf409" />
+  </Folder>
+  <Folder Name="/InventoryService/">
+    <Project Path="InventoryService/InventoryService.API/InventoryService.API.csproj" Id="5947f9de-1f60-4ac4-bc33-71f6b60804e9" />
+    <Project Path="InventoryService/InventoryService.Application/InventoryService.Application.csproj" Id="8b6d7903-f97a-4369-941f-193647b9dbed" />
+    <Project Path="InventoryService/InventoryService.Domain/InventoryService.Domain.csproj" Id="e1632ade-f0eb-4740-8a58-fb4b4f07f011" />
+    <Project Path="InventoryService/InventoryService.Infrastructure/InventoryService.Infrastructure.csproj" Id="3d649431-b7e7-4e0b-87d3-6c217a981f6b" />
+  </Folder>
+  <Folder Name="/Shared/">
+    <Project Path="Shared.Kernel/Shared.Kernel.csproj" Id="ae0d3e87-0f99-4b1a-b817-1d4dbbbb5269" />
+    <Project Path="Shared.Kernel.EntityFrameworkCore/Shared.Kernel.EntityFrameworkCore.csproj" Id="6333f3ba-b0c2-4b18-95c4-156a90faef94" />
+    <Project Path="Shared.Kernel.AspNetCore/Shared.Kernel.AspNetCore.csproj" Id="8b0aed79-bd34-405c-bdb5-8e63abb187de" />
+    <Project Path="Shared.Kernel.Redis/Shared.Kernel.Redis.csproj" Id="3e74ecac-47c4-4c79-88b5-0591c78a3bb9" />
+  </Folder>
+</Solution>
