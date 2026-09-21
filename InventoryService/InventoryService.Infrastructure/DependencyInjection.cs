@@ -1,6 +1,8 @@
 using InventoryService.Application.Repositories.Interfaces;
 using InventoryService.Infrastructure.Database;
 using InventoryService.Infrastructure.Database.Repositories;
+using InventoryService.Infrastructure.Messaging;
+using InventoryService.Infrastructure.Options;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -8,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Shared.Kernel.AspNetCore.Requests;
 using Shared.Kernel.AspNetCore.Requests.Middleware;
 using Shared.Kernel.Database;
+using Shared.Kernel.Extensions;
 using Shared.Kernel.Requests;
 
 namespace InventoryService.Infrastructure
@@ -17,6 +20,7 @@ namespace InventoryService.Infrastructure
         public static IServiceCollection InjectInfrastructure(this IServiceCollection services, IConfiguration configuration)
         {
             AddServices(services, configuration);
+            ConfigureOptions(services, configuration);
 
             return services;
         }
@@ -50,8 +54,17 @@ namespace InventoryService.Infrastructure
             services.AddScoped<ISupplierOrderRepository, SupplierOrderRepositoryScoped>();
             services.AddScoped<ISupplierOrderItemRepository, SupplierOrderItemRepositoryScoped>();
             services.AddScoped<ILowStockAlertRepository, LowStockAlertRepositoryScoped>();
+            services.AddScoped<IOutboxMessageRepository, OutboxMessageRepositoryScoped>();
 
             services.AddScoped<IRequestContext, RequestContextScoped>();
+
+            services.AddHostedService<RabbitMqOutboxPublisherHostedService>();
+            services.AddHostedService<RabbitMqConsumerHostedService>();
+        }
+
+        private static void ConfigureOptions(IServiceCollection services, IConfiguration configuration)
+        {
+            services.ConfigureOption<RabbitMqSettings>(configuration);
         }
     }
 }

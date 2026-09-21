@@ -3,6 +3,7 @@ using InventoryService.Application.Services.DTOs;
 using InventoryService.Application.Services.Interfaces;
 using InventoryService.Domain.Entities;
 using InventoryService.Domain.Enums;
+using Shared.Contracts.Events;
 using Shared.Kernel.Database;
 using Shared.Kernel.Exceptions;
 using Shared.Kernel.Mapping;
@@ -17,17 +18,17 @@ namespace InventoryService.Application.Services
         private readonly IStockTransferRepository _stockTransferRepository;
         private readonly IStockItemRepository _stockItemRepository;
         private readonly IStockMovementRepository _stockMovementRepository;
-        private readonly ILowStockAlertService _lowStockAlertService;
+        private readonly IOutboxMessageService _outboxMessageService;
 
         public StockTransferScopedService(IUnitOfWork unitOfWork, IRequestContext requestContext,
             IStockTransferRepository stockTransferRepository, IStockItemRepository stockItemRepository,
-            IStockMovementRepository stockMovementRepository, ILowStockAlertService lowStockAlertService,
+            IStockMovementRepository stockMovementRepository, IOutboxMessageService outboxMessageService,
             IMapperWrapper mapper) : base(unitOfWork, requestContext, mapper)
         {
             _stockTransferRepository = stockTransferRepository;
             _stockItemRepository = stockItemRepository;
             _stockMovementRepository = stockMovementRepository;
-            _lowStockAlertService = lowStockAlertService;
+            _outboxMessageService = outboxMessageService;
         }
 
         public async Task<StockTransferServiceDTOs.InitiateTransferResponseDTO> InitiateAsync(
@@ -65,6 +66,9 @@ namespace InventoryService.Application.Services
                     RequestContext.UserId, RequestContext.UserId);
 
                 operations.Add(_stockMovementRepository.BuildCreateOperation(movement));
+
+                operations.Add(_outboxMessageService.BuildCreateOperation(
+                    new StockQuantityChangedEvent(transfer.ProductId, transfer.SourceWarehouseId, Increased: false)));
             }
 
             var success = await UnitOfWork.ExecuteInTransactionAsync(operations, cancellationToken);
@@ -72,12 +76,6 @@ namespace InventoryService.Application.Services
             if (!success)
             {
                 throw new ShipmentInitiationFailedException(shipmentId);
-            }
-
-            foreach (var transfer in transfers)
-            {
-                await _lowStockAlertService.EvaluateAfterDecreaseAsync(
-                    transfer.ProductId, transfer.SourceWarehouseId, cancellationToken);
             }
 
             return new StockTransferServiceDTOs.InitiateTransferResponseDTO(
@@ -148,15 +146,15 @@ namespace InventoryService.Application.Services
 
             operations.Add(_stockMovementRepository.BuildCreateOperation(movement));
 
+            operations.Add(_outboxMessageService.BuildCreateOperation(
+                new StockQuantityChangedEvent(transfer.ProductId, transfer.DestinationWarehouseId, Increased: true)));
+
             var success = await UnitOfWork.ExecuteInTransactionAsync(operations, cancellationToken);
 
             if (!success)
             {
                 throw new StockTransferNotInTransitException(transfer.Id);
             }
-
-            await _lowStockAlertService.EvaluateAfterIncreaseAsync(
-                transfer.ProductId, transfer.DestinationWarehouseId, cancellationToken);
 
             var remainingQuantity = transfer.Quantity - request.Quantity;
 
@@ -187,7 +185,9 @@ namespace InventoryService.Application.Services
             {
                 _stockTransferRepository.BuildCancelOperation(transfer.Id, performedByUserId),
                 _stockItemRepository.BuildIncrementOperation(sourceItem.Id, transfer.Quantity),
-                _stockMovementRepository.BuildCreateOperation(movement)
+                _stockMovementRepository.BuildCreateOperation(movement),
+                _outboxMessageService.BuildCreateOperation(
+                    new StockQuantityChangedEvent(transfer.ProductId, transfer.SourceWarehouseId, Increased: true))
             };
 
             var success = await UnitOfWork.ExecuteInTransactionAsync(operations, cancellationToken);
@@ -196,9 +196,6 @@ namespace InventoryService.Application.Services
             {
                 throw new StockTransferNotInTransitException(transfer.Id);
             }
-
-            await _lowStockAlertService.EvaluateAfterIncreaseAsync(
-                transfer.ProductId, transfer.SourceWarehouseId, cancellationToken);
 
             return new StockTransferServiceDTOs.CancelTransferResponseDTO();
         }

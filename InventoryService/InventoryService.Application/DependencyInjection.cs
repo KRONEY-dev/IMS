@@ -3,6 +3,7 @@ using InventoryService.Application.Exceptions;
 using InventoryService.Application.Mappings;
 using InventoryService.Application.Options;
 using InventoryService.Application.Services;
+using InventoryService.Application.Services.EventHandling;
 using InventoryService.Application.Services.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,6 +29,10 @@ namespace InventoryService.Application
             services.AddScoped<IStockTransferService, StockTransferScopedService>();
             services.AddScoped<ISupplierOrderService, SupplierOrderScopedService>();
             services.AddScoped<ILowStockAlertService, LowStockAlertScopedService>();
+            services.AddScoped<IOutboxMessageService, OutboxMessageScopedService>();
+
+            services.AddScoped<IInventoryEventHandler, StockQuantityChangedEventHandler>();
+            services.AddScoped<IInventoryEventHandlerFactory, InventoryEventHandlerFactory>();
 
             services.AddScoped<IMapperWrapper, AutoMapperWrapper>();
             services.AddAutoMapper(cfg =>

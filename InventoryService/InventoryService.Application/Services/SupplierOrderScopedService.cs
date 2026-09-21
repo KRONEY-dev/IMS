@@ -3,6 +3,7 @@ using InventoryService.Application.Services.DTOs;
 using InventoryService.Application.Services.Interfaces;
 using InventoryService.Domain.Entities;
 using InventoryService.Domain.Enums;
+using Shared.Contracts.Events;
 using Shared.Kernel.Database;
 using Shared.Kernel.Exceptions;
 using Shared.Kernel.Mapping;
@@ -18,19 +19,19 @@ namespace InventoryService.Application.Services
         private readonly ISupplierOrderItemRepository _supplierOrderItemRepository;
         private readonly IStockItemRepository _stockItemRepository;
         private readonly IStockMovementRepository _stockMovementRepository;
-        private readonly ILowStockAlertService _lowStockAlertService;
+        private readonly IOutboxMessageService _outboxMessageService;
 
         public SupplierOrderScopedService(IUnitOfWork unitOfWork, IRequestContext requestContext,
             ISupplierOrderRepository supplierOrderRepository, ISupplierOrderItemRepository supplierOrderItemRepository,
             IStockItemRepository stockItemRepository, IStockMovementRepository stockMovementRepository,
-            ILowStockAlertService lowStockAlertService, IMapperWrapper mapper)
+            IOutboxMessageService outboxMessageService, IMapperWrapper mapper)
             : base(unitOfWork, requestContext, mapper)
         {
             _supplierOrderRepository = supplierOrderRepository;
             _supplierOrderItemRepository = supplierOrderItemRepository;
             _stockItemRepository = stockItemRepository;
             _stockMovementRepository = stockMovementRepository;
-            _lowStockAlertService = lowStockAlertService;
+            _outboxMessageService = outboxMessageService;
         }
 
         public async Task<SupplierOrderServiceDTOs.SupplierOrderDTO> CreateAsync(
@@ -137,6 +138,9 @@ namespace InventoryService.Application.Services
 
                 operations.Add(_stockItemRepository.BuildCreateOperation(stockItem));
                 operations.Add(_stockMovementRepository.BuildCreateOperation(movement));
+
+                operations.Add(_outboxMessageService.BuildCreateOperation(
+                    new StockQuantityChangedEvent(stockItem.ProductId, stockItem.WarehouseId, Increased: true)));
             }
 
             var success = await UnitOfWork.ExecuteInTransactionAsync(operations, cancellationToken);
@@ -144,12 +148,6 @@ namespace InventoryService.Application.Services
             if (!success)
             {
                 throw new SupplierOrderNotSubmittedException(order.Id);
-            }
-
-            foreach (var stockItem in createdStockItems)
-            {
-                await _lowStockAlertService.EvaluateAfterIncreaseAsync(
-                    stockItem.ProductId, stockItem.WarehouseId, cancellationToken);
             }
 
             return new SupplierOrderServiceDTOs.ReceiveSupplierOrderResponseDTO(

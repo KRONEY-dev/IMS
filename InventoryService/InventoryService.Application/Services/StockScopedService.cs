@@ -5,6 +5,7 @@ using InventoryService.Application.Services.Interfaces;
 using InventoryService.Domain.Entities;
 using InventoryService.Domain.Enums;
 using Microsoft.Extensions.Options;
+using Shared.Contracts.Events;
 using Shared.Kernel.Database;
 using Shared.Kernel.Exceptions;
 using Shared.Kernel.Mapping;
@@ -19,19 +20,19 @@ namespace InventoryService.Application.Services
         private readonly IStockThresholdRepository _stockThresholdRepository;
         private readonly IStockItemRepository _stockItemRepository;
         private readonly IStockMovementRepository _stockMovementRepository;
-        private readonly ILowStockAlertService _lowStockAlertService;
+        private readonly IOutboxMessageService _outboxMessageService;
         private readonly int _maxConcurrencyRetryAttempts;
 
         public StockScopedService(IUnitOfWork unitOfWork, IRequestContext requestContext,
             IStockThresholdRepository stockThresholdRepository, IStockItemRepository stockItemRepository,
-            IStockMovementRepository stockMovementRepository, ILowStockAlertService lowStockAlertService,
+            IStockMovementRepository stockMovementRepository, IOutboxMessageService outboxMessageService,
             IMapperWrapper mapper, IOptions<StockConcurrencySettings> stockConcurrencySettings)
             : base(unitOfWork, requestContext, mapper)
         {
             _stockThresholdRepository = stockThresholdRepository;
             _stockItemRepository = stockItemRepository;
             _stockMovementRepository = stockMovementRepository;
-            _lowStockAlertService = lowStockAlertService;
+            _outboxMessageService = outboxMessageService;
             _maxConcurrencyRetryAttempts = stockConcurrencySettings.Value.MaxRetryAttempts;
         }
 
@@ -137,10 +138,8 @@ namespace InventoryService.Application.Services
 
             _stockItemRepository.Add(stockItem);
             _stockMovementRepository.Add(movement);
+            _outboxMessageService.Add(new StockQuantityChangedEvent(stockItem.ProductId, stockItem.WarehouseId, Increased: true));
             await UnitOfWork.SaveChangesAsync(cancellationToken);
-
-            await _lowStockAlertService.EvaluateAfterIncreaseAsync(
-                stockItem.ProductId, stockItem.WarehouseId, cancellationToken);
 
             return Mapper.Map<StockServiceDTOs.StockItemDTO>(stockItem);
         }
@@ -164,8 +163,11 @@ namespace InventoryService.Application.Services
             var incrementOperation = _stockItemRepository.BuildIncrementOperation(stockItem.Id, request.Quantity);
             var insertMovementOperation = _stockMovementRepository.BuildCreateOperation(movement);
 
+            var insertOutboxMessageOperation = _outboxMessageService.BuildCreateOperation(
+                new StockQuantityChangedEvent(stockItem.ProductId, stockItem.WarehouseId, Increased: true));
+
             var success = await UnitOfWork.ExecuteInTransactionAsync(
-                [incrementOperation, insertMovementOperation], cancellationToken);
+                [incrementOperation, insertMovementOperation, insertOutboxMessageOperation], cancellationToken);
 
             if (!success)
             {
@@ -173,9 +175,6 @@ namespace InventoryService.Application.Services
             }
 
             await _stockItemRepository.ReloadAsync(stockItem, cancellationToken);
-
-            await _lowStockAlertService.EvaluateAfterIncreaseAsync(
-                stockItem.ProductId, stockItem.WarehouseId, cancellationToken);
 
             return Mapper.Map<StockServiceDTOs.StockItemDTO>(stockItem);
         }
@@ -240,16 +239,16 @@ namespace InventoryService.Application.Services
             var decrementOperation = _stockItemRepository.BuildDecrementOperation(stockItemId, quantity);
             var insertMovementOperation = _stockMovementRepository.BuildCreateOperation(movement);
 
+            var insertOutboxMessageOperation = _outboxMessageService.BuildCreateOperation(
+                new StockQuantityChangedEvent(stockItem.ProductId, stockItem.WarehouseId, Increased: false));
+
             var success = await UnitOfWork.ExecuteInTransactionAsync(
-                [decrementOperation, insertMovementOperation], cancellationToken);
+                [decrementOperation, insertMovementOperation, insertOutboxMessageOperation], cancellationToken);
 
             if (!success)
             {
                 throw new InsufficientStockAvailableException(stockItemId, quantity);
             }
-
-            await _lowStockAlertService.EvaluateAfterDecreaseAsync(
-                stockItem.ProductId, stockItem.WarehouseId, cancellationToken);
         }
     }
 }

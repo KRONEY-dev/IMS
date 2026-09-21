@@ -85,6 +85,14 @@ namespace InventoryService.Infrastructure.Database
             }
         }
 
+        public DbSet<OutboxMessage> OutboxMessages
+        {
+            get
+            {
+                return Set<OutboxMessage>();
+            }
+        }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(InventoryDbContext).Assembly);

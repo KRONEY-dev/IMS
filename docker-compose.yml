@@ -53,6 +53,21 @@ services:
     networks:
       - ims-network
 
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    container_name: rabbitmq
+    ports:
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ims-network
+
   accounts-api:
     build:
       context: .
@@ -83,8 +98,12 @@ services:
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__Inventory: "Host=inventory-db;Port=5432;Database=inventory;Username=postgres;Password=postgres"
       OpenApi__GatewayBasePath: "/inventory"
+      RabbitMqSettings__HostName: "rabbitmq"
+      RabbitMqSettings__Queues__InventoryEvents: "stock-quantity-changed"
     depends_on:
       inventory-db:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     networks:
       - ims-network
@@ -124,3 +143,4 @@ volumes:
   accounts-db-data:
   inventory-db-data:
   redis-data:
+  rabbitmq-data:
