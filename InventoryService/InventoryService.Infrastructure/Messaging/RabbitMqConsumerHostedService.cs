@@ -29,7 +29,7 @@ namespace InventoryService.Infrastructure.Messaging
             var settingsValue = _settings.Value;
             var queueName = settingsValue.Queues[RabbitMqQueueNames.InventoryEvents];
 
-            var factory = new ConnectionFactory { HostName = settingsValue.HostName };
+            var factory = new ConnectionFactory { HostName = settingsValue.HostName, Port = settingsValue.Port };
             _connection = await factory.CreateConnectionAsync(stoppingToken);
             _channel = await _connection.CreateChannelAsync(cancellationToken: stoppingToken);
 

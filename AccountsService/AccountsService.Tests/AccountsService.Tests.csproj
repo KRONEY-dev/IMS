@@ -20,11 +20,13 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="Testcontainers.PostgreSql" Version="4.15.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\AccountsService.Domain\AccountsService.Domain.csproj" />
     <ProjectReference Include="..\AccountsService.Application\AccountsService.Application.csproj" />
+    <ProjectReference Include="..\AccountsService.Infrastructure\AccountsService.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Shared.Kernel\Shared.Kernel.csproj" />
   </ItemGroup>
 

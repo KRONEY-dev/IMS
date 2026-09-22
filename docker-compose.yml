@@ -130,6 +130,7 @@ services:
       ConnectionStrings__Redis: "redis:6379"
       OpenApi__GatewayBasePath: "/inventory"
       RabbitMqSettings__HostName: "rabbitmq"
+      RabbitMqSettings__Port: "5672"
       RabbitMqSettings__Queues__InventoryEvents: "stock-quantity-changed"
     depends_on:
       inventory-db:

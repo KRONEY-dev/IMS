@@ -30,9 +30,16 @@ namespace InventoryService.Infrastructure.Messaging
             var settingsValue = _settings.Value;
             var queueName = settingsValue.Queues[RabbitMqQueueNames.InventoryEvents];
 
-            var factory = new ConnectionFactory { HostName = settingsValue.HostName };
+            var factory = new ConnectionFactory { HostName = settingsValue.HostName, Port = settingsValue.Port };
             _connection = await factory.CreateConnectionAsync(stoppingToken);
-            _channel = await _connection.CreateChannelAsync(cancellationToken: stoppingToken);
+
+            // Publisher confirmations, with tracking enabled, make each BasicPublishAsync call below
+            // await the broker's ack before completing - without this, a message can be marked
+            // processed in the outbox table even though the broker never actually received it (e.g. a
+            // dropped connection right after the fire-and-forget publish call returns).
+            _channel = await _connection.CreateChannelAsync(
+                new CreateChannelOptions(publisherConfirmationsEnabled: true, publisherConfirmationTrackingEnabled: true),
+                cancellationToken: stoppingToken);
 
             await _channel.QueueDeclareAsync(queueName, durable: true, exclusive: false,
                 autoDelete: false, cancellationToken: stoppingToken);
