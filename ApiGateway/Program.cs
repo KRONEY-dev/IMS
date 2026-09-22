@@ -17,6 +17,7 @@ builder.Services.ConfigureOption<RateLimitingSettings>(configuration);
 
 builder.Services.AddRedisAccessTokenBlacklist(configuration);
 builder.Services.AddRedisRateLimiter(configuration);
+builder.Services.AddRedisUserAccessRevocation(configuration);
 
 builder.Services.AddReverseProxy()
     .LoadFromConfig(configuration.GetSection("ReverseProxy"));

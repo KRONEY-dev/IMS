@@ -24,6 +24,7 @@
     <ProjectReference Include="..\..\Shared.Kernel.EntityFrameworkCore\Shared.Kernel.EntityFrameworkCore.csproj" />
     <ProjectReference Include="..\..\Shared.Kernel.Redis\Shared.Kernel.Redis.csproj" />
     <ProjectReference Include="..\..\Shared.Kernel.Quartz\Shared.Kernel.Quartz.csproj" />
+    <ProjectReference Include="..\..\Shared.Contracts\Shared.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

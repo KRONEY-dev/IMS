@@ -36,5 +36,6 @@ app.UseRequestContext();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapInventoryHub();
 
 app.Run();

@@ -15,8 +15,8 @@ namespace AccountsService.Domain.Entities
         public string FirstName { get; private set; }
         public string LastName { get; private set; }
 
-        public string Email { get; private set; }
-        public string PhoneNumber { get; private set; }
+        public string? Email { get; private set; }
+        public string? PhoneNumber { get; private set; }
 
         public UserRole Role { get; private set; }
 
@@ -27,7 +27,7 @@ namespace AccountsService.Domain.Entities
         private User() { }
 
         [SetsRequiredMembers]
-        public User(string firstName, string lastName, string email, string phoneNumber, UserRole role, string passwordHash)
+        public User(string firstName, string lastName, string? email, string? phoneNumber, UserRole role, string passwordHash)
         {
             Id = Guid.NewGuid();
 
@@ -67,12 +67,12 @@ namespace AccountsService.Domain.Entities
             PasswordHash = newPasswordHash;
         }
 
-        public void ChangeEmail(string newEmail)
+        public void ChangeEmail(string? newEmail)
         {
             Email = newEmail;
         }
 
-        public void ChangePhoneNumber(string newPhoneNumber)
+        public void ChangePhoneNumber(string? newPhoneNumber)
         {
             PhoneNumber = newPhoneNumber;
         }

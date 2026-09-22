@@ -35,6 +35,15 @@ namespace Shared.Kernel.Redis
             return services;
         }
 
+        public static IServiceCollection AddRedisUserAccessRevocation(this IServiceCollection services, IConfiguration configuration)
+        {
+            AddConnectionMultiplexer(services, configuration);
+
+            services.AddSingleton<IUserAccessRevocation, RedisUserAccessRevocation>();
+
+            return services;
+        }
+
         // TryAdd, not Add: safe to call from multiple Add* methods above — only the first registration
         // wins, so both consumers share one IConnectionMultiplexer regardless of call order or which
         // Add* methods are actually used.

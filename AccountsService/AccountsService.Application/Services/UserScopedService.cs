@@ -16,13 +16,16 @@ namespace AccountsService.Application.Services
     {
         private readonly IUserRepository _userRepository;
         private readonly IPasswordHasherService _passwordHasherService;
+        private readonly IUserAccessChangeNotifier _userAccessChangeNotifier;
 
         public UserScopedService(IUnitOfWork unitOfWork, IRequestContext requestContext, IMapperWrapper mapper,
-            IUserRepository userRepository, IPasswordHasherService passwordHasherService)
+            IUserRepository userRepository, IPasswordHasherService passwordHasherService,
+            IUserAccessChangeNotifier userAccessChangeNotifier)
             : base(unitOfWork, requestContext, mapper)
         {
             _userRepository = userRepository;
             _passwordHasherService = passwordHasherService;
+            _userAccessChangeNotifier = userAccessChangeNotifier;
         }
 
         public async Task<UserServiceDTOs.RegisterResponseDTO> RegisterAsync(
@@ -43,12 +46,12 @@ namespace AccountsService.Application.Services
                 }
             }
 
-            if (await _userRepository.ExistsByEmailAsync(request.Email, cancellationToken))
+            if (!string.IsNullOrEmpty(request.Email) && await _userRepository.ExistsByEmailAsync(request.Email, cancellationToken))
             {
                 throw new EmailAlreadyTakenException(request.Email);
             }
 
-            if (await _userRepository.ExistsByPhoneNumberAsync(request.PhoneNumber, cancellationToken))
+            if (!string.IsNullOrEmpty(request.PhoneNumber) && await _userRepository.ExistsByPhoneNumberAsync(request.PhoneNumber, cancellationToken))
             {
                 throw new PhoneNumberAlreadyTakenException(request.PhoneNumber);
             }
@@ -92,6 +95,8 @@ namespace AccountsService.Application.Services
 
             await UnitOfWork.SaveChangesAsync(cancellationToken);
 
+            await _userAccessChangeNotifier.NotifyAccessRevokedAsync(request.TargetUserId, cancellationToken);
+
             return new UserServiceDTOs.DeleteAccountResponseDTO();
         }
 
@@ -130,6 +135,8 @@ namespace AccountsService.Application.Services
             user.AssignWarehouse(request.WarehouseId);
             await UnitOfWork.SaveChangesAsync(cancellationToken);
 
+            await _userAccessChangeNotifier.NotifyWarehouseChangedAsync(user.Id, request.WarehouseId, added: true, cancellationToken);
+
             return new UserServiceDTOs.AssignWarehouseResponseDTO();
         }
 
@@ -153,6 +160,8 @@ namespace AccountsService.Application.Services
 
             user.RemoveWarehouse(request.WarehouseId);
             await UnitOfWork.SaveChangesAsync(cancellationToken);
+
+            await _userAccessChangeNotifier.NotifyWarehouseChangedAsync(user.Id, request.WarehouseId, added: false, cancellationToken);
 
             return new UserServiceDTOs.RemoveWarehouseResponseDTO();
         }

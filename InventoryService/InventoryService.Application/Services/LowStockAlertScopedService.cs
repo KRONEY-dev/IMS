@@ -16,15 +16,18 @@ namespace InventoryService.Application.Services
         private readonly ILowStockAlertRepository _lowStockAlertRepository;
         private readonly IStockThresholdRepository _stockThresholdRepository;
         private readonly IStockItemRepository _stockItemRepository;
+        private readonly INotificationPublisher _notificationPublisher;
 
         public LowStockAlertScopedService(IUnitOfWork unitOfWork, IRequestContext requestContext,
             ILowStockAlertRepository lowStockAlertRepository, IStockThresholdRepository stockThresholdRepository,
-            IStockItemRepository stockItemRepository, IMapperWrapper mapper)
+            IStockItemRepository stockItemRepository, INotificationPublisher notificationPublisher,
+            IMapperWrapper mapper)
             : base(unitOfWork, requestContext, mapper)
         {
             _lowStockAlertRepository = lowStockAlertRepository;
             _stockThresholdRepository = stockThresholdRepository;
             _stockItemRepository = stockItemRepository;
+            _notificationPublisher = notificationPublisher;
         }
 
         public async Task<LowStockAlertServiceDTOs.GetAllLowStockAlertsResponseDTO> GetAllAsync(
@@ -86,7 +89,11 @@ namespace InventoryService.Application.Services
             }
             catch (UniqueConstraintViolationException)
             {
+                // An active alert already exists (concurrent evaluation created it first) — still worth notifying below.
             }
+
+            await _notificationPublisher.NotifyLowStockAlertAsync(
+                new NotificationServiceDTOs.LowStockAlertNotification(productId, warehouseId), cancellationToken);
         }
 
         public async Task EvaluateAfterIncreaseAsync(Guid productId, Guid warehouseId, CancellationToken cancellationToken)
@@ -106,7 +113,13 @@ namespace InventoryService.Application.Services
             }
 
             var resolveOperation = _lowStockAlertRepository.BuildResolveOperation(productId, warehouseId);
-            await UnitOfWork.ExecuteInTransactionAsync(resolveOperation, cancellationToken);
+            var resolved = await UnitOfWork.ExecuteInTransactionAsync(resolveOperation, cancellationToken);
+
+            if (resolved)
+            {
+                await _notificationPublisher.NotifyLowStockAlertAsync(
+                    new NotificationServiceDTOs.LowStockAlertNotification(productId, warehouseId), cancellationToken);
+            }
         }
     }
 }

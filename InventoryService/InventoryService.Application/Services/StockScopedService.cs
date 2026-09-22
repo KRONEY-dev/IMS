@@ -21,18 +21,21 @@ namespace InventoryService.Application.Services
         private readonly IStockItemRepository _stockItemRepository;
         private readonly IStockMovementRepository _stockMovementRepository;
         private readonly IOutboxMessageService _outboxMessageService;
+        private readonly INotificationPublisher _notificationPublisher;
         private readonly int _maxConcurrencyRetryAttempts;
 
         public StockScopedService(IUnitOfWork unitOfWork, IRequestContext requestContext,
             IStockThresholdRepository stockThresholdRepository, IStockItemRepository stockItemRepository,
             IStockMovementRepository stockMovementRepository, IOutboxMessageService outboxMessageService,
-            IMapperWrapper mapper, IOptions<StockConcurrencySettings> stockConcurrencySettings)
+            INotificationPublisher notificationPublisher, IMapperWrapper mapper,
+            IOptions<StockConcurrencySettings> stockConcurrencySettings)
             : base(unitOfWork, requestContext, mapper)
         {
             _stockThresholdRepository = stockThresholdRepository;
             _stockItemRepository = stockItemRepository;
             _stockMovementRepository = stockMovementRepository;
             _outboxMessageService = outboxMessageService;
+            _notificationPublisher = notificationPublisher;
             _maxConcurrencyRetryAttempts = stockConcurrencySettings.Value.MaxRetryAttempts;
         }
 
@@ -141,6 +144,9 @@ namespace InventoryService.Application.Services
             _outboxMessageService.Add(new StockQuantityChangedEvent(stockItem.ProductId, stockItem.WarehouseId, Increased: true));
             await UnitOfWork.SaveChangesAsync(cancellationToken);
 
+            await _notificationPublisher.NotifyStockLevelChangedAsync(
+                new NotificationServiceDTOs.StockLevelChangedNotification(stockItem.ProductId, stockItem.WarehouseId), cancellationToken);
+
             return Mapper.Map<StockServiceDTOs.StockItemDTO>(stockItem);
         }
 
@@ -175,6 +181,9 @@ namespace InventoryService.Application.Services
             }
 
             await _stockItemRepository.ReloadAsync(stockItem, cancellationToken);
+
+            await _notificationPublisher.NotifyStockLevelChangedAsync(
+                new NotificationServiceDTOs.StockLevelChangedNotification(stockItem.ProductId, stockItem.WarehouseId), cancellationToken);
 
             return Mapper.Map<StockServiceDTOs.StockItemDTO>(stockItem);
         }
@@ -249,6 +258,9 @@ namespace InventoryService.Application.Services
             {
                 throw new InsufficientStockAvailableException(stockItemId, quantity);
             }
+
+            await _notificationPublisher.NotifyStockLevelChangedAsync(
+                new NotificationServiceDTOs.StockLevelChangedNotification(stockItem.ProductId, stockItem.WarehouseId), cancellationToken);
         }
     }
 }

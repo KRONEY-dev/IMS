@@ -1,11 +1,14 @@
 using InventoryService.Application.Options;
 using InventoryService.Application.Repositories.Interfaces;
+using InventoryService.Application.Services.Interfaces;
 using InventoryService.Infrastructure.Database;
 using InventoryService.Infrastructure.Database.Repositories;
 using InventoryService.Infrastructure.Jobs;
 using InventoryService.Infrastructure.Messaging;
 using InventoryService.Infrastructure.Options;
+using InventoryService.Infrastructure.RealTime;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -40,6 +43,11 @@ namespace InventoryService.Infrastructure
             app.UseMiddleware<RequestContextMiddleware>();
         }
 
+        public static void MapInventoryHub(this IEndpointRouteBuilder app)
+        {
+            app.MapHub<InventoryHub>("/hubs/inventory");
+        }
+
         private static void AddServices(IServiceCollection services, IConfiguration configuration)
         {
             services.AddDbContext<InventoryDbContext>(options =>
@@ -67,6 +75,12 @@ namespace InventoryService.Infrastructure
             services.AddHostedService<RabbitMqConsumerHostedService>();
 
             services.AddRedisDistributedLock(configuration);
+
+            services.AddSignalR().AddStackExchangeRedis(configuration.GetConnectionString("Redis")!);
+            services.AddScoped<INotificationPublisher, SignalRNotificationPublisher>();
+
+            services.AddSingleton<IUserConnectionRegistry, RedisUserConnectionRegistry>();
+            services.AddHostedService<UserAccessChangeSubscriberHostedService>();
         }
 
         private static void AddQuartzJobs(IServiceCollection services, IConfiguration configuration)

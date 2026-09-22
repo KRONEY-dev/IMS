@@ -57,6 +57,8 @@ namespace AccountsService.Infrastructure
 
             services.AddRedisAccessTokenBlacklist(configuration);
             services.AddRedisDistributedLock(configuration);
+            services.AddRedisUserAccessRevocation(configuration);
+            services.AddScoped<IUserAccessChangeNotifier, UserAccessChangeNotifierService>();
 
             services.AddScoped<IRequestContext, RequestContextScoped>();
         }

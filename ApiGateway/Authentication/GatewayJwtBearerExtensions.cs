@@ -17,7 +17,8 @@ namespace ApiGateway.Authentication
                 .AddJwtBearer();
 
             services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
-                .Configure<IOptions<JwtValidationSettings>, IAccessTokenBlacklist>((options, jwtSettings, accessTokenBlacklist) =>
+                .Configure<IOptions<JwtValidationSettings>, IAccessTokenBlacklist, IUserAccessRevocation>(
+                    (options, jwtSettings, accessTokenBlacklist, userAccessRevocation) =>
                 {
                     var settings = jwtSettings.Value;
 
@@ -51,6 +52,25 @@ namespace ApiGateway.Authentication
                             if (await accessTokenBlacklist.IsBlacklistedAsync(jti, context.HttpContext.RequestAborted))
                             {
                                 context.Fail("Access token has been revoked.");
+                                return;
+                            }
+
+                            var sub = context.Principal?.FindFirstValue(JwtRegisteredClaimNames.Sub);
+                            var iatClaim = context.Principal?.FindFirstValue(JwtRegisteredClaimNames.Iat);
+
+                            if (sub is null || iatClaim is null)
+                            {
+                                context.Fail("Access token is missing required claims.");
+                                return;
+                            }
+
+                            var issuedAt = DateTimeOffset.FromUnixTimeSeconds(long.Parse(iatClaim));
+                            var revokedAt = await userAccessRevocation.GetRevokedAtAsync(
+                                Guid.Parse(sub), context.HttpContext.RequestAborted);
+
+                            if (revokedAt is not null && issuedAt <= revokedAt)
+                            {
+                                context.Fail("User access has been revoked; refresh required.");
                             }
                         }
                     };

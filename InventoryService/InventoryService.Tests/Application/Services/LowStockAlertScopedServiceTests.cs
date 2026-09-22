@@ -1,6 +1,10 @@
 using InventoryService.Application.Repositories.Interfaces;
 using InventoryService.Application.Services;
+using InventoryService.Application.Services.DTOs;
+using InventoryService.Application.Services.Interfaces;
 using InventoryService.Domain.Entities;
+using InventoryService.Domain.Enums;
+using InventoryService.Domain.Exceptions;
 using Moq;
 using Shared.Kernel.Database;
 using Shared.Kernel.Exceptions;
@@ -18,13 +22,113 @@ namespace InventoryService.Tests.Application.Services
         private readonly Mock<ILowStockAlertRepository> _lowStockAlertRepositoryMock = new();
         private readonly Mock<IStockThresholdRepository> _stockThresholdRepositoryMock = new();
         private readonly Mock<IStockItemRepository> _stockItemRepositoryMock = new();
+        private readonly Mock<INotificationPublisher> _notificationPublisherMock = new();
 
         private LowStockAlertScopedService CreateSut()
         {
             return new LowStockAlertScopedService(
                 _unitOfWorkMock.Object, _requestContextMock.Object,
                 _lowStockAlertRepositoryMock.Object, _stockThresholdRepositoryMock.Object,
-                _stockItemRepositoryMock.Object, _mapperMock.Object);
+                _stockItemRepositoryMock.Object, _notificationPublisherMock.Object, _mapperMock.Object);
+        }
+
+        private void SetActor(UserRole role, IReadOnlyList<Guid>? warehouseIds = null)
+        {
+            _requestContextMock.SetupGet(context => context.Role).Returns(role.ToString());
+            _requestContextMock.SetupGet(context => context.WarehouseIds).Returns(warehouseIds ?? []);
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_NotFound_ThrowsNotFoundException()
+        {
+            var alertId = Guid.NewGuid();
+
+            _lowStockAlertRepositoryMock
+                .Setup(repo => repo.GetByIdAsync(alertId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync((LowStockAlert?)null);
+
+            var sut = CreateSut();
+
+            await Assert.ThrowsAsync<NotFoundException>(() => sut.GetByIdAsync(
+                new LowStockAlertServiceDTOs.GetLowStockAlertByIdRequestDTO(alertId), CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task ResolveAsync_CallerBelowManager_ThrowsInsufficientPermissionsException()
+        {
+            SetActor(UserRole.Worker);
+
+            var sut = CreateSut();
+
+            await Assert.ThrowsAsync<InsufficientPermissionsException>(() => sut.ResolveAsync(
+                new LowStockAlertServiceDTOs.ResolveLowStockAlertRequestDTO(Guid.NewGuid()), CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task ResolveAsync_NotFound_ThrowsNotFoundException()
+        {
+            var alertId = Guid.NewGuid();
+            SetActor(UserRole.Manager, warehouseIds: []);
+
+            _lowStockAlertRepositoryMock
+                .Setup(repo => repo.GetByIdAsync(alertId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync((LowStockAlert?)null);
+
+            var sut = CreateSut();
+
+            await Assert.ThrowsAsync<NotFoundException>(() => sut.ResolveAsync(
+                new LowStockAlertServiceDTOs.ResolveLowStockAlertRequestDTO(alertId), CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task ResolveAsync_ManagerWithoutWarehouseAccess_ThrowsInsufficientPermissionsException()
+        {
+            var alert = LowStockAlert.Create(Guid.NewGuid(), Guid.NewGuid());
+            SetActor(UserRole.Manager, warehouseIds: [Guid.NewGuid()]);
+
+            _lowStockAlertRepositoryMock
+                .Setup(repo => repo.GetByIdAsync(alert.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(alert);
+
+            var sut = CreateSut();
+
+            await Assert.ThrowsAsync<InsufficientPermissionsException>(() => sut.ResolveAsync(
+                new LowStockAlertServiceDTOs.ResolveLowStockAlertRequestDTO(alert.Id), CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task ResolveAsync_Valid_ResolvesAlertAndSaves()
+        {
+            var alert = LowStockAlert.Create(Guid.NewGuid(), Guid.NewGuid());
+            SetActor(UserRole.Admin);
+
+            _lowStockAlertRepositoryMock
+                .Setup(repo => repo.GetByIdAsync(alert.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(alert);
+
+            var sut = CreateSut();
+
+            await sut.ResolveAsync(new LowStockAlertServiceDTOs.ResolveLowStockAlertRequestDTO(alert.Id), CancellationToken.None);
+
+            Assert.Equal(LowStockAlertStatus.Resolved, alert.Status);
+            _unitOfWorkMock.Verify(uow => uow.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task ResolveAsync_AlreadyResolved_ThrowsLowStockAlertAlreadyResolvedException()
+        {
+            var alert = LowStockAlert.Create(Guid.NewGuid(), Guid.NewGuid());
+            alert.Resolve();
+            SetActor(UserRole.Admin);
+
+            _lowStockAlertRepositoryMock
+                .Setup(repo => repo.GetByIdAsync(alert.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(alert);
+
+            var sut = CreateSut();
+
+            await Assert.ThrowsAsync<GeneralExceptions.LowStockAlertAlreadyResolvedException>(() => sut.ResolveAsync(
+                new LowStockAlertServiceDTOs.ResolveLowStockAlertRequestDTO(alert.Id), CancellationToken.None));
         }
 
         [Fact]
@@ -107,6 +211,12 @@ namespace InventoryService.Tests.Application.Services
             _unitOfWorkMock.Verify(
                 uow => uow.ExecuteInTransactionAsync(createOperation, It.IsAny<CancellationToken>()),
                 Times.Once);
+
+            _notificationPublisherMock.Verify(
+                publisher => publisher.NotifyLowStockAlertAsync(
+                    It.Is<NotificationServiceDTOs.LowStockAlertNotification>(n => n.ProductId == productId && n.WarehouseId == warehouseId),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
         }
 
         [Fact]
@@ -141,6 +251,14 @@ namespace InventoryService.Tests.Application.Services
                 () => sut.EvaluateAfterDecreaseAsync(productId, warehouseId, CancellationToken.None));
 
             Assert.Null(exception);
+
+            // Still notifies even though creation was swallowed as a duplicate — a concurrent
+            // evaluation already created the active alert, so clients still need to hear about it.
+            _notificationPublisherMock.Verify(
+                publisher => publisher.NotifyLowStockAlertAsync(
+                    It.Is<NotificationServiceDTOs.LowStockAlertNotification>(n => n.ProductId == productId && n.WarehouseId == warehouseId),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
         }
 
         [Fact]
@@ -206,6 +324,10 @@ namespace InventoryService.Tests.Application.Services
                 .Setup(repo => repo.BuildResolveOperation(productId, warehouseId))
                 .Returns(resolveOperation);
 
+            _unitOfWorkMock
+                .Setup(uow => uow.ExecuteInTransactionAsync(resolveOperation, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+
             var sut = CreateSut();
 
             await sut.EvaluateAfterIncreaseAsync(productId, warehouseId, CancellationToken.None);
@@ -215,6 +337,48 @@ namespace InventoryService.Tests.Application.Services
             _unitOfWorkMock.Verify(
                 uow => uow.ExecuteInTransactionAsync(resolveOperation, It.IsAny<CancellationToken>()),
                 Times.Once);
+
+            _notificationPublisherMock.Verify(
+                publisher => publisher.NotifyLowStockAlertAsync(
+                    It.Is<NotificationServiceDTOs.LowStockAlertNotification>(n => n.ProductId == productId && n.WarehouseId == warehouseId),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task EvaluateAfterIncreaseAsync_ResolveOperationAffectsNoRows_DoesNotNotify()
+        {
+            // No active alert existed to resolve (already resolved by a concurrent evaluation) —
+            // ExecuteInTransactionAsync reports 0 affected rows, so no notification should fire.
+            var productId = Guid.NewGuid();
+            var warehouseId = Guid.NewGuid();
+            var threshold = StockThreshold.Create(productId, warehouseId, reorderLevel: 10, reorderQuantity: 5);
+            var resolveOperation = Mock.Of<IDirectOperation>();
+
+            _stockThresholdRepositoryMock
+                .Setup(repo => repo.GetByProductAndWarehouseAsync(productId, warehouseId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(threshold);
+
+            _stockItemRepositoryMock
+                .Setup(repo => repo.GetTotalQuantityAsync(productId, warehouseId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(10);
+
+            _lowStockAlertRepositoryMock
+                .Setup(repo => repo.BuildResolveOperation(productId, warehouseId))
+                .Returns(resolveOperation);
+
+            _unitOfWorkMock
+                .Setup(uow => uow.ExecuteInTransactionAsync(resolveOperation, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(false);
+
+            var sut = CreateSut();
+
+            await sut.EvaluateAfterIncreaseAsync(productId, warehouseId, CancellationToken.None);
+
+            _notificationPublisherMock.Verify(
+                publisher => publisher.NotifyLowStockAlertAsync(
+                    It.IsAny<NotificationServiceDTOs.LowStockAlertNotification>(), It.IsAny<CancellationToken>()),
+                Times.Never);
         }
     }
 }

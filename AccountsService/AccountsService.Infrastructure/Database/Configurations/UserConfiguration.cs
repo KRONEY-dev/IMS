@@ -19,14 +19,12 @@ namespace AccountsService.Infrastructure.Database.Configurations
                 .HasMaxLength(30);
 
             builder.Property(u => u.Email)
-                .IsRequired()
                 .HasMaxLength(40);
 
             builder.HasIndex(u => u.Email)
                 .IsUnique();
 
             builder.Property(u => u.PhoneNumber)
-                .IsRequired()
                 .HasMaxLength(20);
 
             builder.Property(u => u.WarehouseIds)

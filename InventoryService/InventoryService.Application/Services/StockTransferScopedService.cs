@@ -19,16 +19,19 @@ namespace InventoryService.Application.Services
         private readonly IStockItemRepository _stockItemRepository;
         private readonly IStockMovementRepository _stockMovementRepository;
         private readonly IOutboxMessageService _outboxMessageService;
+        private readonly INotificationPublisher _notificationPublisher;
 
         public StockTransferScopedService(IUnitOfWork unitOfWork, IRequestContext requestContext,
             IStockTransferRepository stockTransferRepository, IStockItemRepository stockItemRepository,
             IStockMovementRepository stockMovementRepository, IOutboxMessageService outboxMessageService,
-            IMapperWrapper mapper) : base(unitOfWork, requestContext, mapper)
+            INotificationPublisher notificationPublisher, IMapperWrapper mapper)
+            : base(unitOfWork, requestContext, mapper)
         {
             _stockTransferRepository = stockTransferRepository;
             _stockItemRepository = stockItemRepository;
             _stockMovementRepository = stockMovementRepository;
             _outboxMessageService = outboxMessageService;
+            _notificationPublisher = notificationPublisher;
         }
 
         public async Task<StockTransferServiceDTOs.InitiateTransferResponseDTO> InitiateAsync(
@@ -76,6 +79,13 @@ namespace InventoryService.Application.Services
             if (!success)
             {
                 throw new ShipmentInitiationFailedException(shipmentId);
+            }
+
+            foreach (var transfer in transfers)
+            {
+                await _notificationPublisher.NotifyStockLevelChangedAsync(
+                    new NotificationServiceDTOs.StockLevelChangedNotification(transfer.ProductId, transfer.SourceWarehouseId),
+                    cancellationToken);
             }
 
             return new StockTransferServiceDTOs.InitiateTransferResponseDTO(
@@ -156,6 +166,10 @@ namespace InventoryService.Application.Services
                 throw new StockTransferNotInTransitException(transfer.Id);
             }
 
+            await _notificationPublisher.NotifyStockLevelChangedAsync(
+                new NotificationServiceDTOs.StockLevelChangedNotification(transfer.ProductId, transfer.DestinationWarehouseId),
+                cancellationToken);
+
             var remainingQuantity = transfer.Quantity - request.Quantity;
 
             return new StockTransferServiceDTOs.ReceiveTransferResponseDTO(remainingQuantity, remainingQuantity == 0);
@@ -196,6 +210,10 @@ namespace InventoryService.Application.Services
             {
                 throw new StockTransferNotInTransitException(transfer.Id);
             }
+
+            await _notificationPublisher.NotifyStockLevelChangedAsync(
+                new NotificationServiceDTOs.StockLevelChangedNotification(transfer.ProductId, transfer.SourceWarehouseId),
+                cancellationToken);
 
             return new StockTransferServiceDTOs.CancelTransferResponseDTO();
         }

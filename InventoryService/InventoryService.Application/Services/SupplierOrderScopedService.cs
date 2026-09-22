@@ -20,11 +20,13 @@ namespace InventoryService.Application.Services
         private readonly IStockItemRepository _stockItemRepository;
         private readonly IStockMovementRepository _stockMovementRepository;
         private readonly IOutboxMessageService _outboxMessageService;
+        private readonly INotificationPublisher _notificationPublisher;
 
         public SupplierOrderScopedService(IUnitOfWork unitOfWork, IRequestContext requestContext,
             ISupplierOrderRepository supplierOrderRepository, ISupplierOrderItemRepository supplierOrderItemRepository,
             IStockItemRepository stockItemRepository, IStockMovementRepository stockMovementRepository,
-            IOutboxMessageService outboxMessageService, IMapperWrapper mapper)
+            IOutboxMessageService outboxMessageService, INotificationPublisher notificationPublisher,
+            IMapperWrapper mapper)
             : base(unitOfWork, requestContext, mapper)
         {
             _supplierOrderRepository = supplierOrderRepository;
@@ -32,6 +34,7 @@ namespace InventoryService.Application.Services
             _stockItemRepository = stockItemRepository;
             _stockMovementRepository = stockMovementRepository;
             _outboxMessageService = outboxMessageService;
+            _notificationPublisher = notificationPublisher;
         }
 
         public async Task<SupplierOrderServiceDTOs.SupplierOrderDTO> CreateAsync(
@@ -149,6 +152,16 @@ namespace InventoryService.Application.Services
             {
                 throw new SupplierOrderNotSubmittedException(order.Id);
             }
+
+            foreach (var stockItem in createdStockItems)
+            {
+                await _notificationPublisher.NotifyStockLevelChangedAsync(
+                    new NotificationServiceDTOs.StockLevelChangedNotification(stockItem.ProductId, stockItem.WarehouseId),
+                    cancellationToken);
+            }
+
+            await _notificationPublisher.NotifySupplierOrderReceivedAsync(
+                new NotificationServiceDTOs.SupplierOrderReceivedNotification(order.Id, order.WarehouseId), cancellationToken);
 
             return new SupplierOrderServiceDTOs.ReceiveSupplierOrderResponseDTO(
                 Mapper.Map<List<StockServiceDTOs.StockItemDTO>>(createdStockItems));
