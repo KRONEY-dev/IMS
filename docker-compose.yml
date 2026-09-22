@@ -68,6 +68,34 @@ services:
     networks:
       - ims-network
 
+  accounts-migrate:
+    build:
+      context: .
+      dockerfile: AccountsService/AccountsService.API/Dockerfile
+      target: migrator
+    container_name: accounts-migrate
+    environment:
+      ConnectionStrings__Accounts: "Host=accounts-db;Port=5432;Database=accounts;Username=postgres;Password=postgres"
+    depends_on:
+      accounts-db:
+        condition: service_healthy
+    networks:
+      - ims-network
+
+  inventory-migrate:
+    build:
+      context: .
+      dockerfile: InventoryService/InventoryService.API/Dockerfile
+      target: migrator
+    container_name: inventory-migrate
+    environment:
+      ConnectionStrings__Inventory: "Host=inventory-db;Port=5432;Database=inventory;Username=postgres;Password=postgres"
+    depends_on:
+      inventory-db:
+        condition: service_healthy
+    networks:
+      - ims-network
+
   accounts-api:
     build:
       context: .
@@ -84,9 +112,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      accounts-migrate:
+        condition: service_completed_successfully
     networks:
       - ims-network
-    # Свідомо без "ports": недоступний з хоста напряму, лише через api-gateway (розділ 5 CLAUDE.md).
+    # Deliberately without "ports": not reachable directly from the host, only via api-gateway.
 
   inventory-api:
     build:
@@ -108,9 +138,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      inventory-migrate:
+        condition: service_completed_successfully
     networks:
       - ims-network
-    # Свідомо без "ports": недоступний з хоста напряму, лише через api-gateway (розділ 5 CLAUDE.md).
+    # Deliberately without "ports": not reachable directly from the host, only via api-gateway.
 
   api-gateway:
     build:

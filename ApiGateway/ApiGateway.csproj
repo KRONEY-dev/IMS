@@ -25,8 +25,8 @@
 	</ItemGroup>
 
   <ItemGroup>
-    <!-- Публічний ключ Accounts (RS256) — Gateway єдиний перевіряє підпис JWT, downstream-сервіси
-         лише читають вже перевірені claims. -->
+    <!-- Accounts' public key (RS256) — the Gateway is the only place that verifies the JWT signature;
+         downstream services only read already-verified claims. -->
     <Content Include="Keys\**\*.pem">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

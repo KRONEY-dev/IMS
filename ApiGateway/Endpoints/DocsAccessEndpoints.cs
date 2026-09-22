@@ -28,7 +28,7 @@ namespace ApiGateway.Endpoints
                         .OrderBy(entry => entry.Network)]));
             })
                 .WithName("ListAllowedNetworks")
-                .WithSummary("Список CIDR-мереж, яким дозволено доступ до документації, з описом.");
+                .WithSummary("List of CIDR networks allowed to access the documentation, with descriptions.");
 
             group.MapPost("/networks", async (AddNetworkRequestDTO request, IConnectionMultiplexer connectionMultiplexer) =>
             {
@@ -48,7 +48,7 @@ namespace ApiGateway.Endpoints
                 return Results.Ok();
             })
                 .WithName("AddAllowedNetwork")
-                .WithSummary("Додає CIDR-мережу (напр. \"192.168.1.0/24\") з описом (до 30 символів) до allowlist.");
+                .WithSummary("Adds a CIDR network (e.g. \"192.168.1.0/24\") with a description (up to 30 characters) to the allowlist.");
 
             group.MapPost("/networks/remove", async (RemoveNetworkRequestDTO request, IConnectionMultiplexer connectionMultiplexer) =>
             {
@@ -58,7 +58,7 @@ namespace ApiGateway.Endpoints
                 return Results.Ok();
             })
                 .WithName("RemoveAllowedNetwork")
-                .WithSummary("Видаляє CIDR-мережу з allowlist.");
+                .WithSummary("Removes a CIDR network from the allowlist.");
         }
     }
 }

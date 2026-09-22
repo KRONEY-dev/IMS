@@ -29,7 +29,14 @@ FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish "./AccountsService.API.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
+# This stage applies pending EF Core migrations against the target database, then exits.
+FROM build AS migrator
+WORKDIR /src
+RUN dotnet tool restore
+ENTRYPOINT ["dotnet", "ef", "database", "update", "--project", "AccountsService/AccountsService.Infrastructure/AccountsService.Infrastructure.csproj", "--startup-project", "AccountsService/AccountsService.API/AccountsService.API.csproj"]
+
 # This stage is used in production or when running from VS in regular mode (Default when not using the Debug configuration)
+# Must stay the LAST stage in this file — a plain "docker build" with no --target builds whichever stage is last.
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .

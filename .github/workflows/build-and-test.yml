@@ -47,3 +47,95 @@ jobs:
         with:
           name: test-results
           path: TestResults/
+
+      - name: Restore local tools (dotnet-ef)
+        run: dotnet tool restore
+
+      - name: Check for model changes missing a migration (Accounts)
+        run: >
+          dotnet ef migrations has-pending-model-changes
+          --project AccountsService/AccountsService.Infrastructure/AccountsService.Infrastructure.csproj
+          --startup-project AccountsService/AccountsService.API/AccountsService.API.csproj
+
+      - name: Check for model changes missing a migration (Inventory)
+        run: >
+          dotnet ef migrations has-pending-model-changes
+          --project InventoryService/InventoryService.Infrastructure/InventoryService.Infrastructure.csproj
+          --startup-project InventoryService/InventoryService.API/InventoryService.API.csproj
+
+      - name: Generate reviewable migration SQL (Accounts)
+        run: >
+          dotnet ef migrations script --idempotent
+          --project AccountsService/AccountsService.Infrastructure/AccountsService.Infrastructure.csproj
+          --startup-project AccountsService/AccountsService.API/AccountsService.API.csproj
+          --output ./MigrationScripts/accounts-migrations.sql
+
+      - name: Generate reviewable migration SQL (Inventory)
+        run: >
+          dotnet ef migrations script --idempotent
+          --project InventoryService/InventoryService.Infrastructure/InventoryService.Infrastructure.csproj
+          --startup-project InventoryService/InventoryService.API/InventoryService.API.csproj
+          --output ./MigrationScripts/inventory-migrations.sql
+
+      - name: Upload migration SQL for review
+        uses: actions/upload-artifact@v7
+        with:
+          name: migration-scripts
+          path: MigrationScripts/
+
+  migrate-check:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+
+    services:
+      accounts-db:
+        image: postgres:17
+        env:
+          POSTGRES_DB: accounts
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d accounts"
+          --health-interval=5s --health-timeout=5s --health-retries=5
+
+      inventory-db:
+        image: postgres:17
+        env:
+          POSTGRES_DB: inventory
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d inventory"
+          --health-interval=5s --health-timeout=5s --health-retries=5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore local tools (dotnet-ef)
+        run: dotnet tool restore
+
+      - name: Apply migrations to a fresh database (Accounts)
+        run: >
+          dotnet ef database update
+          --project AccountsService/AccountsService.Infrastructure/AccountsService.Infrastructure.csproj
+          --startup-project AccountsService/AccountsService.API/AccountsService.API.csproj
+        env:
+          ConnectionStrings__Accounts: "Host=localhost;Port=5432;Database=accounts;Username=postgres;Password=postgres"
+
+      - name: Apply migrations to a fresh database (Inventory)
+        run: >
+          dotnet ef database update
+          --project InventoryService/InventoryService.Infrastructure/InventoryService.Infrastructure.csproj
+          --startup-project InventoryService/InventoryService.API/InventoryService.API.csproj
+        env:
+          ConnectionStrings__Inventory: "Host=localhost;Port=5433;Database=inventory;Username=postgres;Password=postgres"

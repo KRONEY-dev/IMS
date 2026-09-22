@@ -38,7 +38,7 @@ namespace InventoryService.Infrastructure.Jobs
             var cutoff = DateTime.UtcNow.AddDays(settingsValue.LookaheadDays);
             var arrivingOrders = await _supplierOrderRepository.GetArrivingByAsync(cutoff, cancellationToken);
 
-            // Stand-in for a real notification: SignalR push lands in Phase 5 and will replace this log.
+            // TODO: replace this log with a real push notification (e.g. SignalR) once one exists for this event.
             foreach (var order in arrivingOrders)
             {
                 _logger.LogInformation(
