@@ -50,7 +50,7 @@ namespace Shared.Kernel.Redis
         private static void AddConnectionMultiplexer(IServiceCollection services, IConfiguration configuration)
         {
             services.TryAddSingleton<IConnectionMultiplexer>(
-                _ => ConnectionMultiplexer.Connect(configuration.GetConnectionString("Redis")!));
+                _ => ConnectionMultiplexer.Connect(RedisConnectionStringFactory.BuildResilient(configuration.GetConnectionString("Redis")!)));
         }
     }
 }

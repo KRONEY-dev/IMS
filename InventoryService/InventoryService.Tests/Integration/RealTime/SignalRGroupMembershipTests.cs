@@ -32,48 +32,36 @@ namespace InventoryService.Tests.Integration.RealTime
         [Fact]
         public async Task JoinWarehouse_OnlyReceivesNotificationsForTheJoinedWarehouse()
         {
-            try
+            var joinedWarehouseId = Guid.NewGuid();
+            var otherWarehouseId = Guid.NewGuid();
+
+            var token = TestJwtFactory.CreateToken(Guid.NewGuid(), UserRole.Admin);
+
+            await using var connection = BuildConnection(token);
+
+            var received = new TaskCompletionSource<NotificationServiceDTOs.StockLevelChangedNotification>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+
+            connection.On<NotificationServiceDTOs.StockLevelChangedNotification>("StockLevelChanged", notification =>
             {
-                var joinedWarehouseId = Guid.NewGuid();
-                var otherWarehouseId = Guid.NewGuid();
+                received.TrySetResult(notification);
+            });
 
-                var token = TestJwtFactory.CreateToken(Guid.NewGuid(), UserRole.Admin);
+            await connection.StartAsync();
+            await connection.InvokeAsync("JoinWarehouse", joinedWarehouseId);
 
-                await using var connection = BuildConnection(token);
+            await PublishStockLevelChangedAsync(otherWarehouseId);
 
-                var received = new TaskCompletionSource<NotificationServiceDTOs.StockLevelChangedNotification>(
-                    TaskCreationOptions.RunContinuationsAsynchronously);
+            var completedTooSoon = await Task.WhenAny(received.Task, Task.Delay(TimeSpan.FromSeconds(2)));
+            Assert.NotSame(received.Task, completedTooSoon);
 
-                connection.On<NotificationServiceDTOs.StockLevelChangedNotification>("StockLevelChanged", notification =>
-                {
-                    received.TrySetResult(notification);
-                });
+            await PublishStockLevelChangedAsync(joinedWarehouseId);
 
-                await connection.StartAsync();
-                await connection.InvokeAsync("JoinWarehouse", joinedWarehouseId);
+            var completed = await Task.WhenAny(received.Task, Task.Delay(TimeSpan.FromSeconds(10)));
+            Assert.Same(received.Task, completed);
 
-                await PublishStockLevelChangedAsync(otherWarehouseId);
-
-                var completedTooSoon = await Task.WhenAny(received.Task, Task.Delay(TimeSpan.FromSeconds(2)));
-                Assert.NotSame(received.Task, completedTooSoon);
-
-                await PublishStockLevelChangedAsync(joinedWarehouseId);
-
-                var completed = await Task.WhenAny(received.Task, Task.Delay(TimeSpan.FromSeconds(10)));
-                Assert.Same(received.Task, completed);
-
-                var notification = await received.Task;
-                Assert.Equal(joinedWarehouseId, notification.WarehouseId);
-            }
-            finally
-            {
-                // The host's response body never carries the real exception for a 500 by design -
-                // this is the only reliable way to see what the server actually threw.
-                foreach (var entry in _factory.Logs.Entries)
-                {
-                    Console.WriteLine(entry);
-                }
-            }
+            var notification = await received.Task;
+            Assert.Equal(joinedWarehouseId, notification.WarehouseId);
         }
 
         private async Task PublishStockLevelChangedAsync(Guid warehouseId)

@@ -76,7 +76,7 @@ namespace InventoryService.Infrastructure
 
             services.AddRedisDistributedLock(configuration);
 
-            services.AddSignalR().AddStackExchangeRedis(configuration.GetConnectionString("Redis")!);
+            services.AddSignalR().AddStackExchangeRedis(RedisConnectionStringFactory.BuildResilient(configuration.GetConnectionString("Redis")!));
             services.AddScoped<INotificationPublisher, SignalRNotificationPublisher>();
 
             services.AddSingleton<IUserConnectionRegistry, RedisUserConnectionRegistry>();
