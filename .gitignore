@@ -19,6 +19,9 @@ obj/
 # RSA key pair for JWT signing — must never be committed
 **/Keys/*.pem
 
+# Gateway HTTPS dev certificate — must never be committed
+**/Certs/*.pfx
+
 docker-compose.override.yml
 
 .DS_Store

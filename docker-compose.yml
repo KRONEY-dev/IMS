@@ -152,7 +152,9 @@ services:
     container_name: api-gateway
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ASPNETCORE_URLS: http://+:8080
+      ASPNETCORE_URLS: https://+:8081
+      Kestrel__Certificates__Default__Path: /app/Certs/gateway.pfx
+      Kestrel__Certificates__Default__Password: "GatewayDevCert2026!"
       ConnectionStrings__Redis: "redis:6379"
       ReverseProxy__Clusters__accounts-cluster__Destinations__destination1__Address: "http://accounts-api:8080"
       ReverseProxy__Clusters__inventory-cluster__Destinations__destination1__Address: "http://inventory-api:8080"
@@ -160,7 +162,7 @@ services:
       DocsAccessSettings__AllowedNetworks__1: "::1/128"
       DocsAccessSettings__AllowedNetworks__2: "172.28.0.0/16"
     ports:
-      - "8080:8080"
+      - "8081:8081"
     depends_on:
       - accounts-api
       - inventory-api
