@@ -57,7 +57,7 @@ namespace InventoryService.Tests.Integration
                 "LowStockAlert", notification => lowStockAlert.TrySetResult(notification));
 
             await connection.StartAsync();
-            await connection.InvokeAsync("JoinWarehouse", warehouseId);
+            await connection.InvokeWithRetryAsync("JoinWarehouse", warehouseId);
 
             var thresholdResponse = await client.PostAsJsonAsync("api/Stock/CreateThreshold",
                 new StockServiceDTOs.CreateStockThresholdRequestDTO(productId, warehouseId, ReorderLevel: 10, ReorderQuantity: 5));

@@ -48,7 +48,7 @@ namespace InventoryService.Tests.Integration.RealTime
             });
 
             await connection.StartAsync();
-            await connection.InvokeAsync("JoinWarehouse", joinedWarehouseId);
+            await connection.InvokeWithRetryAsync("JoinWarehouse", joinedWarehouseId);
 
             await PublishStockLevelChangedAsync(otherWarehouseId);
 
