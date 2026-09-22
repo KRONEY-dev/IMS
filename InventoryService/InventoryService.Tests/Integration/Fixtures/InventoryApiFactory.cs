@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace InventoryService.Tests.Integration.Fixtures
 {
@@ -19,6 +20,8 @@ namespace InventoryService.Tests.Integration.Fixtures
         public string RabbitMqHostName { get; set; } = default!;
         public int RabbitMqPort { get; set; }
 
+        public CapturingLoggerProvider Logs { get; } = new();
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Development");
@@ -34,6 +37,8 @@ namespace InventoryService.Tests.Integration.Fixtures
                     ["RabbitMqSettings:Queues:InventoryEvents"] = $"test-inventory-events-{Guid.NewGuid()}"
                 });
             });
+
+            builder.ConfigureLogging(logging => logging.AddProvider(Logs));
         }
     }
 }
