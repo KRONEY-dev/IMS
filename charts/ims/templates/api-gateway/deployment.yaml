@@ -26,7 +26,10 @@ spec:
             - name: Kestrel__Certificates__Default__Path
               value: /app/Certs/gateway.pfx
             - name: Kestrel__Certificates__Default__Password
-              value: {{ .Values.apiGateway.certPassword | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-api-gateway
+                  key: cert-password
             - name: ConnectionStrings__Redis
               value: "{{ .Release.Name }}-redis:{{ .Values.redis.port }}"
             - name: ReverseProxy__Clusters__accounts-cluster__Destinations__destination1__Address
@@ -37,6 +40,10 @@ spec:
               value: "127.0.0.1/32"
             - name: DocsAccessSettings__AllowedNetworks__1
               value: "::1/128"
+          volumeMounts:
+            - name: jwt-public-key
+              mountPath: /app/Keys/accounts-public.pem
+              subPath: accounts-public.pem
           ports:
             - containerPort: {{ .Values.apiGateway.port }}
           readinessProbe:
@@ -53,3 +60,7 @@ spec:
               scheme: HTTPS
             initialDelaySeconds: 10
             periodSeconds: 10
+      volumes:
+        - name: jwt-public-key
+          secret:
+            secretName: ims-jwt-keys

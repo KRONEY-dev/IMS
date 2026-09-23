@@ -25,7 +25,10 @@ spec:
             - name: POSTGRES_USER
               value: {{ .Values.accountsDb.username | quote }}
             - name: POSTGRES_PASSWORD
-              value: {{ .Values.accountsDb.password | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-accounts-db
+                  key: password
           ports:
             - containerPort: {{ .Values.accountsDb.port }}
           volumeMounts:

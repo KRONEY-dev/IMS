@@ -5,7 +5,6 @@ accountsDb:
     pullPolicy: IfNotPresent
   database: accounts
   username: postgres
-  password: postgres
   port: 5432
   storage:
     size: 1Gi
@@ -17,7 +16,6 @@ inventoryDb:
     pullPolicy: IfNotPresent
   database: inventory
   username: postgres
-  password: postgres
   port: 5432
   storage:
     size: 1Gi
@@ -72,4 +70,3 @@ apiGateway:
     pullPolicy: Never
   replicaCount: 1
   port: 8081
-  certPassword: "GatewayDevCert2026!"

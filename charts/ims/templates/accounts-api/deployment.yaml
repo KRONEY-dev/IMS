@@ -29,8 +29,13 @@ spec:
           image: "{{ .Values.accountsApi.migrationImage.repository }}:{{ .Values.accountsApi.migrationImage.tag }}"
           imagePullPolicy: {{ .Values.accountsApi.migrationImage.pullPolicy }}
           env:
+            - name: ACCOUNTS_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-accounts-db
+                  key: password
             - name: ConnectionStrings__Accounts
-              value: "Host={{ .Release.Name }}-accounts-db;Port={{ .Values.accountsDb.port }};Database={{ .Values.accountsDb.database }};Username={{ .Values.accountsDb.username }};Password={{ .Values.accountsDb.password }}"
+              value: "Host={{ .Release.Name }}-accounts-db;Port={{ .Values.accountsDb.port }};Database={{ .Values.accountsDb.database }};Username={{ .Values.accountsDb.username }};Password=$(ACCOUNTS_DB_PASSWORD)"
       containers:
         - name: accounts-api
           image: "{{ .Values.accountsApi.image.repository }}:{{ .Values.accountsApi.image.tag }}"
@@ -40,12 +45,21 @@ spec:
               value: Development
             - name: ASPNETCORE_URLS
               value: "http://+:{{ .Values.accountsApi.port }}"
+            - name: ACCOUNTS_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-accounts-db
+                  key: password
             - name: ConnectionStrings__Accounts
-              value: "Host={{ .Release.Name }}-accounts-db;Port={{ .Values.accountsDb.port }};Database={{ .Values.accountsDb.database }};Username={{ .Values.accountsDb.username }};Password={{ .Values.accountsDb.password }}"
+              value: "Host={{ .Release.Name }}-accounts-db;Port={{ .Values.accountsDb.port }};Database={{ .Values.accountsDb.database }};Username={{ .Values.accountsDb.username }};Password=$(ACCOUNTS_DB_PASSWORD)"
             - name: ConnectionStrings__Redis
               value: "{{ .Release.Name }}-redis:{{ .Values.redis.port }}"
             - name: OpenApi__GatewayBasePath
               value: "/accounts"
+          volumeMounts:
+            - name: jwt-private-key
+              mountPath: /app/Keys/accounts-private.pem
+              subPath: accounts-private.pem
           ports:
             - containerPort: {{ .Values.accountsApi.port }}
           readinessProbe:
@@ -60,3 +74,7 @@ spec:
               port: {{ .Values.accountsApi.port }}
             initialDelaySeconds: 10
             periodSeconds: 10
+      volumes:
+        - name: jwt-private-key
+          secret:
+            secretName: ims-jwt-keys

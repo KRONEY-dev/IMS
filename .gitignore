@@ -22,6 +22,9 @@ obj/
 # Gateway HTTPS dev certificate — must never be committed
 **/Certs/*.pfx
 
+# Real secret values for the Helm chart — must never be committed
+charts/ims/values-secrets.yaml
+
 docker-compose.override.yml
 
 .DS_Store

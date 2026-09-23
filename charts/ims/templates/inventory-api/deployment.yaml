@@ -29,8 +29,13 @@ spec:
           image: "{{ .Values.inventoryApi.migrationImage.repository }}:{{ .Values.inventoryApi.migrationImage.tag }}"
           imagePullPolicy: {{ .Values.inventoryApi.migrationImage.pullPolicy }}
           env:
+            - name: INVENTORY_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-inventory-db
+                  key: password
             - name: ConnectionStrings__Inventory
-              value: "Host={{ .Release.Name }}-inventory-db;Port={{ .Values.inventoryDb.port }};Database={{ .Values.inventoryDb.database }};Username={{ .Values.inventoryDb.username }};Password={{ .Values.inventoryDb.password }}"
+              value: "Host={{ .Release.Name }}-inventory-db;Port={{ .Values.inventoryDb.port }};Database={{ .Values.inventoryDb.database }};Username={{ .Values.inventoryDb.username }};Password=$(INVENTORY_DB_PASSWORD)"
       containers:
         - name: inventory-api
           image: "{{ .Values.inventoryApi.image.repository }}:{{ .Values.inventoryApi.image.tag }}"
@@ -40,8 +45,13 @@ spec:
               value: Development
             - name: ASPNETCORE_URLS
               value: "http://+:{{ .Values.inventoryApi.port }}"
+            - name: INVENTORY_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-inventory-db
+                  key: password
             - name: ConnectionStrings__Inventory
-              value: "Host={{ .Release.Name }}-inventory-db;Port={{ .Values.inventoryDb.port }};Database={{ .Values.inventoryDb.database }};Username={{ .Values.inventoryDb.username }};Password={{ .Values.inventoryDb.password }}"
+              value: "Host={{ .Release.Name }}-inventory-db;Port={{ .Values.inventoryDb.port }};Database={{ .Values.inventoryDb.database }};Username={{ .Values.inventoryDb.username }};Password=$(INVENTORY_DB_PASSWORD)"
             - name: ConnectionStrings__Redis
               value: "{{ .Release.Name }}-redis:{{ .Values.redis.port }}"
             - name: OpenApi__GatewayBasePath
