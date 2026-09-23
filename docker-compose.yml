@@ -2,6 +2,7 @@ services:
   accounts-db:
     image: postgres:17
     container_name: accounts-db
+    restart: always
     environment:
       POSTGRES_DB: accounts
       POSTGRES_USER: postgres
@@ -21,6 +22,7 @@ services:
   inventory-db:
     image: postgres:17
     container_name: inventory-db
+    restart: always
     environment:
       POSTGRES_DB: inventory
       POSTGRES_USER: postgres
@@ -40,6 +42,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: redis
+    restart: always
     command: redis-server --appendonly yes
     ports:
       - "6379:6379"
@@ -56,6 +59,7 @@ services:
   rabbitmq:
     image: rabbitmq:4-management-alpine
     container_name: rabbitmq
+    restart: always
     ports:
       - "15672:15672"
     volumes:
@@ -101,6 +105,7 @@ services:
       context: .
       dockerfile: AccountsService/AccountsService.API/Dockerfile
     container_name: accounts-api
+    restart: always
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
@@ -123,6 +128,7 @@ services:
       context: .
       dockerfile: InventoryService/InventoryService.API/Dockerfile
     container_name: inventory-api
+    restart: always
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
@@ -150,6 +156,7 @@ services:
       context: .
       dockerfile: ApiGateway/Dockerfile
     container_name: api-gateway
+    restart: always
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: https://+:8081

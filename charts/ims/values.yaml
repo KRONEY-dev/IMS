@@ -1,0 +1,75 @@
+accountsDb:
+  image:
+    repository: postgres
+    tag: "17"
+    pullPolicy: IfNotPresent
+  database: accounts
+  username: postgres
+  password: postgres
+  port: 5432
+  storage:
+    size: 1Gi
+
+inventoryDb:
+  image:
+    repository: postgres
+    tag: "17"
+    pullPolicy: IfNotPresent
+  database: inventory
+  username: postgres
+  password: postgres
+  port: 5432
+  storage:
+    size: 1Gi
+
+rabbitmq:
+  image:
+    repository: rabbitmq
+    tag: "4-management-alpine"
+    pullPolicy: IfNotPresent
+  amqpPort: 5672
+  managementPort: 15672
+  storage:
+    size: 1Gi
+
+redis:
+  image:
+    repository: redis
+    tag: "7-alpine"
+    pullPolicy: IfNotPresent
+  port: 6379
+  storage:
+    size: 1Gi
+
+accountsApi:
+  image:
+    repository: ims-accounts-api
+    tag: latest
+    pullPolicy: Never
+  migrationImage:
+    repository: ims-accounts-migrate
+    tag: latest
+    pullPolicy: Never
+  replicaCount: 1
+  port: 8080
+
+inventoryApi:
+  image:
+    repository: ims-inventory-api
+    tag: latest
+    pullPolicy: Never
+  migrationImage:
+    repository: ims-inventory-migrate
+    tag: latest
+    pullPolicy: Never
+  replicaCount: 1
+  port: 8080
+
+apiGateway:
+  image:
+    repository: ims-api-gateway
+    tag: latest
+    pullPolicy: Never
+  replicaCount: 1
+  port: 8081
+  certPassword: "GatewayDevCert2026!"

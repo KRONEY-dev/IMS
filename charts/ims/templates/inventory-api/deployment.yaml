@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-inventory-api
+  labels:
+    {{- include "ims.componentLabels" (dict "context" $ "component" "inventory-api") | nindent 4 }}
+spec:
+  replicas: {{ .Values.inventoryApi.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "ims.selectorLabels" (dict "context" $ "component" "inventory-api") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ims.componentLabels" (dict "context" $ "component" "inventory-api") | nindent 8 }}
+    spec:
+      initContainers:
+        - name: wait-for-db
+          image: "{{ .Values.inventoryDb.image.repository }}:{{ .Values.inventoryDb.image.tag }}"
+          command:
+            - sh
+            - -c
+            - |
+              until pg_isready -h {{ .Release.Name }}-inventory-db -p {{ .Values.inventoryDb.port }} -U {{ .Values.inventoryDb.username }}; do
+                echo "Waiting for inventory-db..."
+                sleep 2
+              done
+        - name: migrate
+          image: "{{ .Values.inventoryApi.migrationImage.repository }}:{{ .Values.inventoryApi.migrationImage.tag }}"
+          imagePullPolicy: {{ .Values.inventoryApi.migrationImage.pullPolicy }}
+          env:
+            - name: ConnectionStrings__Inventory
+              value: "Host={{ .Release.Name }}-inventory-db;Port={{ .Values.inventoryDb.port }};Database={{ .Values.inventoryDb.database }};Username={{ .Values.inventoryDb.username }};Password={{ .Values.inventoryDb.password }}"
+      containers:
+        - name: inventory-api
+          image: "{{ .Values.inventoryApi.image.repository }}:{{ .Values.inventoryApi.image.tag }}"
+          imagePullPolicy: {{ .Values.inventoryApi.image.pullPolicy }}
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: Development
+            - name: ASPNETCORE_URLS
+              value: "http://+:{{ .Values.inventoryApi.port }}"
+            - name: ConnectionStrings__Inventory
+              value: "Host={{ .Release.Name }}-inventory-db;Port={{ .Values.inventoryDb.port }};Database={{ .Values.inventoryDb.database }};Username={{ .Values.inventoryDb.username }};Password={{ .Values.inventoryDb.password }}"
+            - name: ConnectionStrings__Redis
+              value: "{{ .Release.Name }}-redis:{{ .Values.redis.port }}"
+            - name: OpenApi__GatewayBasePath
+              value: "/inventory"
+            - name: RabbitMqSettings__HostName
+              value: "{{ .Release.Name }}-rabbitmq"
+            - name: RabbitMqSettings__Port
+              value: "{{ .Values.rabbitmq.amqpPort }}"
+            - name: RabbitMqSettings__Queues__InventoryEvents
+              value: "stock-quantity-changed"
+          ports:
+            - containerPort: {{ .Values.inventoryApi.port }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.inventoryApi.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.inventoryApi.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 10

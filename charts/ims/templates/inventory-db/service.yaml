@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-inventory-db
+  labels:
+    {{- include "ims.componentLabels" (dict "context" $ "component" "inventory-db") | nindent 4 }}
+spec:
+  clusterIP: None
+  selector:
+    {{- include "ims.selectorLabels" (dict "context" $ "component" "inventory-db") | nindent 4 }}
+  ports:
+    - port: {{ .Values.inventoryDb.port }}
+      targetPort: {{ .Values.inventoryDb.port }}

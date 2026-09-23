@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-api-gateway
+  labels:
+    {{- include "ims.componentLabels" (dict "context" $ "component" "api-gateway") | nindent 4 }}
+spec:
+  replicas: {{ .Values.apiGateway.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "ims.selectorLabels" (dict "context" $ "component" "api-gateway") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ims.componentLabels" (dict "context" $ "component" "api-gateway") | nindent 8 }}
+    spec:
+      containers:
+        - name: api-gateway
+          image: "{{ .Values.apiGateway.image.repository }}:{{ .Values.apiGateway.image.tag }}"
+          imagePullPolicy: {{ .Values.apiGateway.image.pullPolicy }}
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: Development
+            - name: ASPNETCORE_URLS
+              value: "https://+:{{ .Values.apiGateway.port }}"
+            - name: Kestrel__Certificates__Default__Path
+              value: /app/Certs/gateway.pfx
+            - name: Kestrel__Certificates__Default__Password
+              value: {{ .Values.apiGateway.certPassword | quote }}
+            - name: ConnectionStrings__Redis
+              value: "{{ .Release.Name }}-redis:{{ .Values.redis.port }}"
+            - name: ReverseProxy__Clusters__accounts-cluster__Destinations__destination1__Address
+              value: "http://{{ .Release.Name }}-accounts-api:{{ .Values.accountsApi.port }}"
+            - name: ReverseProxy__Clusters__inventory-cluster__Destinations__destination1__Address
+              value: "http://{{ .Release.Name }}-inventory-api:{{ .Values.inventoryApi.port }}"
+            - name: DocsAccessSettings__AllowedNetworks__0
+              value: "127.0.0.1/32"
+            - name: DocsAccessSettings__AllowedNetworks__1
+              value: "::1/128"
+          ports:
+            - containerPort: {{ .Values.apiGateway.port }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.apiGateway.port }}
+              scheme: HTTPS
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.apiGateway.port }}
+              scheme: HTTPS
+            initialDelaySeconds: 10
+            periodSeconds: 10

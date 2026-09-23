@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-api-gateway
+  labels:
+    {{- include "ims.componentLabels" (dict "context" $ "component" "api-gateway") | nindent 4 }}
+spec:
+  selector:
+    {{- include "ims.selectorLabels" (dict "context" $ "component" "api-gateway") | nindent 4 }}
+  ports:
+    - port: {{ .Values.apiGateway.port }}
+      targetPort: {{ .Values.apiGateway.port }}

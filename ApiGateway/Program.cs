@@ -4,9 +4,11 @@ using ApiGateway.Endpoints;
 using ApiGateway.Options;
 using ApiGateway.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Shared.Kernel.AspNetCore.HealthChecks;
 using Shared.Kernel.AspNetCore.OpenApi;
 using Shared.Kernel.Extensions;
 using Shared.Kernel.Redis;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,6 +28,9 @@ builder.Services.AddGatewayJwtBearerAuthentication();
 builder.Services.AddDocsAccessAuthorization();
 
 builder.Services.AddOpenApiWithBearerAuth(schemeName: JwtBearerDefaults.AuthenticationScheme);
+
+builder.Services.AddHealthChecks()
+    .AddRedis(sp => sp.GetRequiredService<IConnectionMultiplexer>(), tags: ["ready"]);
 
 var app = builder.Build();
 
@@ -47,5 +52,6 @@ app.UseAuthorization();
 app.MapDocsAccessEndpoints();
 
 app.MapReverseProxy();
+app.MapLivenessAndReadinessHealthChecks();
 
 app.Run();

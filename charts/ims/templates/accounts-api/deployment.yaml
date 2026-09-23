@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-accounts-api
+  labels:
+    {{- include "ims.componentLabels" (dict "context" $ "component" "accounts-api") | nindent 4 }}
+spec:
+  replicas: {{ .Values.accountsApi.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "ims.selectorLabels" (dict "context" $ "component" "accounts-api") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ims.componentLabels" (dict "context" $ "component" "accounts-api") | nindent 8 }}
+    spec:
+      initContainers:
+        - name: wait-for-db
+          image: "{{ .Values.accountsDb.image.repository }}:{{ .Values.accountsDb.image.tag }}"
+          command:
+            - sh
+            - -c
+            - |
+              until pg_isready -h {{ .Release.Name }}-accounts-db -p {{ .Values.accountsDb.port }} -U {{ .Values.accountsDb.username }}; do
+                echo "Waiting for accounts-db..."
+                sleep 2
+              done
+        - name: migrate
+          image: "{{ .Values.accountsApi.migrationImage.repository }}:{{ .Values.accountsApi.migrationImage.tag }}"
+          imagePullPolicy: {{ .Values.accountsApi.migrationImage.pullPolicy }}
+          env:
+            - name: ConnectionStrings__Accounts
+              value: "Host={{ .Release.Name }}-accounts-db;Port={{ .Values.accountsDb.port }};Database={{ .Values.accountsDb.database }};Username={{ .Values.accountsDb.username }};Password={{ .Values.accountsDb.password }}"
+      containers:
+        - name: accounts-api
+          image: "{{ .Values.accountsApi.image.repository }}:{{ .Values.accountsApi.image.tag }}"
+          imagePullPolicy: {{ .Values.accountsApi.image.pullPolicy }}
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: Development
+            - name: ASPNETCORE_URLS
+              value: "http://+:{{ .Values.accountsApi.port }}"
+            - name: ConnectionStrings__Accounts
+              value: "Host={{ .Release.Name }}-accounts-db;Port={{ .Values.accountsDb.port }};Database={{ .Values.accountsDb.database }};Username={{ .Values.accountsDb.username }};Password={{ .Values.accountsDb.password }}"
+            - name: ConnectionStrings__Redis
+              value: "{{ .Release.Name }}-redis:{{ .Values.redis.port }}"
+            - name: OpenApi__GatewayBasePath
+              value: "/accounts"
+          ports:
+            - containerPort: {{ .Values.accountsApi.port }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.accountsApi.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.accountsApi.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 10

@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}-accounts-db
+  labels:
+    {{- include "ims.componentLabels" (dict "context" $ "component" "accounts-db") | nindent 4 }}
+spec:
+  serviceName: {{ .Release.Name }}-accounts-db
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "ims.selectorLabels" (dict "context" $ "component" "accounts-db") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ims.componentLabels" (dict "context" $ "component" "accounts-db") | nindent 8 }}
+    spec:
+      containers:
+        - name: postgres
+          image: "{{ .Values.accountsDb.image.repository }}:{{ .Values.accountsDb.image.tag }}"
+          imagePullPolicy: {{ .Values.accountsDb.image.pullPolicy }}
+          env:
+            - name: POSTGRES_DB
+              value: {{ .Values.accountsDb.database | quote }}
+            - name: POSTGRES_USER
+              value: {{ .Values.accountsDb.username | quote }}
+            - name: POSTGRES_PASSWORD
+              value: {{ .Values.accountsDb.password | quote }}
+          ports:
+            - containerPort: {{ .Values.accountsDb.port }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", {{ .Values.accountsDb.username | quote }}, "-d", {{ .Values.accountsDb.database | quote }}]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", {{ .Values.accountsDb.username | quote }}, "-d", {{ .Values.accountsDb.database | quote }}]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: {{ .Values.accountsDb.storage.size }}

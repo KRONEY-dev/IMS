@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-accounts-api
+  labels:
+    {{- include "ims.componentLabels" (dict "context" $ "component" "accounts-api") | nindent 4 }}
+spec:
+  selector:
+    {{- include "ims.selectorLabels" (dict "context" $ "component" "accounts-api") | nindent 4 }}
+  ports:
+    - port: {{ .Values.accountsApi.port }}
+      targetPort: {{ .Values.accountsApi.port }}
