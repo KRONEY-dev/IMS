@@ -168,6 +168,7 @@ jobs:
         run: |
           kubectl apply --server-side -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.94.0/example/prometheus-operator-crd/monitoring.coreos.com_servicemonitors.yaml
           kubectl apply --server-side -f https://github.com/cert-manager/cert-manager/releases/download/v1.21.2/cert-manager.crds.yaml
+          kubectl create namespace cert-manager --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Generate JWT signing keys for this run
         run: |
@@ -222,4 +223,4 @@ jobs:
         if: failure()
         run: |
           kubectl describe pods
-          kubectl logs -l app.kubernetes.io/part-of=ims --all-containers --tail=200
+          kubectl logs -l app.kubernetes.io/part-of=ims --all-containers --tail=200 || true
