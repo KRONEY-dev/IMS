@@ -8,5 +8,6 @@ spec:
   selector:
     {{- include "ims.selectorLabels" (dict "context" $ "component" "accounts-api") | nindent 4 }}
   ports:
-    - port: {{ .Values.accountsApi.port }}
+    - name: http
+      port: {{ .Values.accountsApi.port }}
       targetPort: {{ .Values.accountsApi.port }}

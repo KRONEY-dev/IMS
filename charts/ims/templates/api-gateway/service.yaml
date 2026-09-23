@@ -8,5 +8,6 @@ spec:
   selector:
     {{- include "ims.selectorLabels" (dict "context" $ "component" "api-gateway") | nindent 4 }}
   ports:
-    - port: {{ .Values.apiGateway.port }}
+    - name: https
+      port: {{ .Values.apiGateway.port }}
       targetPort: {{ .Values.apiGateway.port }}

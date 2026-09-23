@@ -1,5 +1,6 @@
 using InventoryService.Application;
 using InventoryService.Infrastructure;
+using Prometheus;
 using Scalar.AspNetCore;
 using Shared.Kernel.AspNetCore.HealthChecks;
 using Shared.Kernel.AspNetCore.OpenApi;
@@ -22,6 +23,8 @@ builder.Services.AddOpenApiWithBearerAuth(configuration["OpenApi:GatewayBasePath
 
 var app = builder.Build();
 
+app.UseHttpMetrics();
+
 app.UseExceptionHandling();
 
 if (app.Environment.IsDevelopment())
@@ -39,6 +42,7 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapInventoryHub();
 app.MapLivenessAndReadinessHealthChecks();
+app.MapMetrics();
 
 app.Run();
 

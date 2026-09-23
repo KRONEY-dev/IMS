@@ -4,6 +4,7 @@ using ApiGateway.Endpoints;
 using ApiGateway.Options;
 using ApiGateway.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Prometheus;
 using Shared.Kernel.AspNetCore.HealthChecks;
 using Shared.Kernel.AspNetCore.OpenApi;
 using Shared.Kernel.Extensions;
@@ -34,6 +35,8 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
+app.UseHttpMetrics();
+
 await DocsAllowlistSeeder.SeedAsync(app.Services);
 
 if (app.Environment.IsDevelopment())
@@ -53,5 +56,6 @@ app.MapDocsAccessEndpoints();
 
 app.MapReverseProxy();
 app.MapLivenessAndReadinessHealthChecks();
+app.MapMetrics();
 
 app.Run();
