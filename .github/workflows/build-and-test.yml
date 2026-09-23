@@ -171,7 +171,9 @@ jobs:
           openssl rsa -in AccountsService/AccountsService.API/Keys/accounts-private.pem -pubout -out ApiGateway/Keys/accounts-public.pem
 
       - name: Generate Gateway HTTPS certificate for this run
-        run: dotnet dev-certs https -ep ApiGateway/Certs/gateway.pfx -p "${{ secrets.CI_GATEWAY_CERT_PASSWORD }}"
+        run: |
+          mkdir -p ApiGateway/Certs
+          dotnet dev-certs https -ep ApiGateway/Certs/gateway.pfx -p "${{ secrets.CI_GATEWAY_CERT_PASSWORD }}"
 
       - name: Build application images
         run: |
