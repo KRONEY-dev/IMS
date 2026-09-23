@@ -44,6 +44,9 @@ spec:
             - name: jwt-public-key
               mountPath: /app/Keys/accounts-public.pem
               subPath: accounts-public.pem
+            - name: gateway-cert
+              mountPath: /app/Certs/gateway.pfx
+              subPath: gateway.pfx
           ports:
             - containerPort: {{ .Values.apiGateway.port }}
           readinessProbe:
@@ -64,3 +67,6 @@ spec:
         - name: jwt-public-key
           secret:
             secretName: ims-jwt-keys
+        - name: gateway-cert
+          secret:
+            secretName: ims-gateway-cert

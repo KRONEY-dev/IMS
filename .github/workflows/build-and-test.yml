@@ -191,6 +191,9 @@ jobs:
       - name: Create JWT keys secret
         run: dotnet run scripts/k8s-create-jwt-secret.cs
 
+      - name: Create Gateway certificate secret
+        run: dotnet run scripts/k8s-create-gateway-cert-secret.cs
+
       - name: Materialize chart secrets from GitHub Actions Secrets
         run: |
           cat <<EOF > charts/ims/values-secrets.yaml
