@@ -1,0 +1,55 @@
+{{- if .Capabilities.APIVersions.Has "cert-manager.io/v1" }}
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: {{ .Release.Name }}-selfsigned-bootstrap
+  labels:
+    {{- include "ims.labels" . | nindent 4 }}
+spec:
+  selfSigned: {}
+---
+# ClusterIssuer.spec.ca.secretName below is resolved against cert-manager's own
+# cluster resource namespace, not this release's namespace — this Certificate
+# must live in the cert-manager namespace for the CA issuer to find its secret.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Release.Name }}-ca
+  namespace: cert-manager
+  labels:
+    {{- include "ims.labels" . | nindent 4 }}
+spec:
+  isCA: true
+  commonName: {{ .Release.Name }}-ca
+  secretName: {{ .Release.Name }}-ca-secret
+  issuerRef:
+    name: {{ .Release.Name }}-selfsigned-bootstrap
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: {{ .Release.Name }}-ca-issuer
+  labels:
+    {{- include "ims.labels" . | nindent 4 }}
+spec:
+  ca:
+    secretName: {{ .Release.Name }}-ca-secret
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Release.Name }}-ingress-tls
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ims.labels" . | nindent 4 }}
+spec:
+  secretName: {{ .Release.Name }}-tls
+  dnsNames:
+    - {{ .Values.ingress.host }}
+  issuerRef:
+    name: {{ .Release.Name }}-ca-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+{{- end }}

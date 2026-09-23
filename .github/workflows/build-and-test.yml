@@ -164,6 +164,11 @@ jobs:
       - name: Setup Helm
         uses: azure/setup-helm@v5
 
+      - name: Install ServiceMonitor and cert-manager CRDs
+        run: |
+          kubectl apply --server-side -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.94.0/example/prometheus-operator-crd/monitoring.coreos.com_servicemonitors.yaml
+          kubectl apply --server-side -f https://github.com/cert-manager/cert-manager/releases/download/v1.21.2/cert-manager.crds.yaml
+
       - name: Generate JWT signing keys for this run
         run: |
           mkdir -p AccountsService/AccountsService.API/Keys ApiGateway/Keys

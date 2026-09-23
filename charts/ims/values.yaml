@@ -70,3 +70,6 @@ apiGateway:
     pullPolicy: Never
   replicaCount: 1
   port: 8081
+
+ingress:
+  host: ims.local
