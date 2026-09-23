@@ -16,6 +16,7 @@ using Shared.Kernel.Extensions;
 using Shared.Kernel.Quartz;
 using Shared.Kernel.Redis;
 using Shared.Kernel.Requests;
+using StackExchange.Redis;
 
 namespace AccountsService.Infrastructure
 {
@@ -61,6 +62,10 @@ namespace AccountsService.Infrastructure
             services.AddScoped<IUserAccessChangeNotifier, UserAccessChangeNotifierService>();
 
             services.AddScoped<IRequestContext, RequestContextScoped>();
+
+            services.AddHealthChecks()
+                .AddDbContextCheck<AccountsDbContext>(tags: ["ready"])
+                .AddRedis(sp => sp.GetRequiredService<IConnectionMultiplexer>(), tags: ["ready"]);
         }
 
         private static void AddQuartzJobs(IServiceCollection services, IConfiguration configuration)

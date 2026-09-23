@@ -1,6 +1,7 @@
 using AccountsService.Application;
 using AccountsService.Infrastructure;
 using Scalar.AspNetCore;
+using Shared.Kernel.AspNetCore.HealthChecks;
 using Shared.Kernel.AspNetCore.OpenApi;
 using Shared.Kernel.AspNetCore.Requests;
 using Shared.Kernel.AspNetCore.Requests.Authentication;
@@ -36,5 +37,6 @@ app.UseRequestContext();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapLivenessAndReadinessHealthChecks();
 
 app.Run();

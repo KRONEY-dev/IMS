@@ -3,6 +3,7 @@ using InventoryService.Infrastructure.Options;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Polly.Registry;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using Shared.Contracts.Messaging;
@@ -14,14 +15,17 @@ namespace InventoryService.Infrastructure.Messaging
     {
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IOptions<RabbitMqSettings> _settings;
+        private readonly ResiliencePipelineProvider<string> _pipelineProvider;
 
         private IConnection? _connection;
         private IChannel? _channel;
 
-        public RabbitMqConsumerHostedService(IServiceScopeFactory scopeFactory, IOptions<RabbitMqSettings> settings)
+        public RabbitMqConsumerHostedService(
+            IServiceScopeFactory scopeFactory, IOptions<RabbitMqSettings> settings, ResiliencePipelineProvider<string> pipelineProvider)
         {
             _scopeFactory = scopeFactory;
             _settings = settings;
+            _pipelineProvider = pipelineProvider;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -29,8 +33,7 @@ namespace InventoryService.Infrastructure.Messaging
             var settingsValue = _settings.Value;
             var queueName = settingsValue.Queues[RabbitMqQueueNames.InventoryEvents];
 
-            var factory = new ConnectionFactory { HostName = settingsValue.HostName, Port = settingsValue.Port };
-            _connection = await factory.CreateConnectionAsync(stoppingToken);
+            _connection = await RabbitMqConnectionFactory.CreateAsync(settingsValue, _pipelineProvider, stoppingToken);
             _channel = await _connection.CreateChannelAsync(cancellationToken: stoppingToken);
 
             await _channel.QueueDeclareAsync(queueName, durable: true, exclusive: false,

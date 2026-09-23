@@ -1,6 +1,7 @@
 using InventoryService.Application;
 using InventoryService.Infrastructure;
 using Scalar.AspNetCore;
+using Shared.Kernel.AspNetCore.HealthChecks;
 using Shared.Kernel.AspNetCore.OpenApi;
 using Shared.Kernel.AspNetCore.Requests;
 using Shared.Kernel.AspNetCore.Requests.Authentication;
@@ -37,6 +38,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapInventoryHub();
+app.MapLivenessAndReadinessHealthChecks();
 
 app.Run();
 

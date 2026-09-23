@@ -19,6 +19,7 @@ using Shared.Kernel.Extensions;
 using Shared.Kernel.Quartz;
 using Shared.Kernel.Redis;
 using Shared.Kernel.Requests;
+using StackExchange.Redis;
 
 namespace InventoryService.Infrastructure
 {
@@ -81,6 +82,14 @@ namespace InventoryService.Infrastructure
 
             services.AddSingleton<IUserConnectionRegistry, RedisUserConnectionRegistry>();
             services.AddHostedService<UserAccessChangeSubscriberHostedService>();
+
+            services.AddRabbitMqConnectionResilience();
+            services.AddSingleton<RabbitMqHealthCheckConnection>();
+
+            services.AddHealthChecks()
+                .AddDbContextCheck<InventoryDbContext>(tags: ["ready"])
+                .AddRedis(sp => sp.GetRequiredService<IConnectionMultiplexer>(), tags: ["ready"])
+                .AddRabbitMQ(sp => sp.GetRequiredService<RabbitMqHealthCheckConnection>().GetConnectionAsync(), tags: ["ready"]);
         }
 
         private static void AddQuartzJobs(IServiceCollection services, IConfiguration configuration)

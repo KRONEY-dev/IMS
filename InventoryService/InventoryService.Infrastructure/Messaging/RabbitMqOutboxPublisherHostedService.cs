@@ -3,6 +3,7 @@ using InventoryService.Infrastructure.Options;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Polly.Registry;
 using RabbitMQ.Client;
 using Shared.Contracts.Messaging;
 using Shared.Kernel.Database;
@@ -15,14 +16,17 @@ namespace InventoryService.Infrastructure.Messaging
     {
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IOptions<RabbitMqSettings> _settings;
+        private readonly ResiliencePipelineProvider<string> _pipelineProvider;
 
         private IConnection? _connection;
         private IChannel? _channel;
 
-        public RabbitMqOutboxPublisherHostedService(IServiceScopeFactory scopeFactory, IOptions<RabbitMqSettings> settings)
+        public RabbitMqOutboxPublisherHostedService(
+            IServiceScopeFactory scopeFactory, IOptions<RabbitMqSettings> settings, ResiliencePipelineProvider<string> pipelineProvider)
         {
             _scopeFactory = scopeFactory;
             _settings = settings;
+            _pipelineProvider = pipelineProvider;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -30,8 +34,7 @@ namespace InventoryService.Infrastructure.Messaging
             var settingsValue = _settings.Value;
             var queueName = settingsValue.Queues[RabbitMqQueueNames.InventoryEvents];
 
-            var factory = new ConnectionFactory { HostName = settingsValue.HostName, Port = settingsValue.Port };
-            _connection = await factory.CreateConnectionAsync(stoppingToken);
+            _connection = await RabbitMqConnectionFactory.CreateAsync(settingsValue, _pipelineProvider, stoppingToken);
 
             // Publisher confirmations, with tracking enabled, make each BasicPublishAsync call below
             // await the broker's ack before completing - without this, a message can be marked

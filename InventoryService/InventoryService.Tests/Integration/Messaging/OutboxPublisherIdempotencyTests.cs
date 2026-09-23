@@ -5,10 +5,13 @@ using InventoryService.Infrastructure.Messaging;
 using InventoryService.Infrastructure.Options;
 using InventoryService.Tests.Integration.Fixtures;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Polly.Registry;
 using RabbitMQ.Client;
 using Shared.Kernel.Database;
+using Shared.Kernel.Extensions;
 using Xunit;
 
 namespace InventoryService.Tests.Integration.Messaging
@@ -55,16 +58,35 @@ namespace InventoryService.Tests.Integration.Messaging
             var secondMessageId = await SeedUnprocessedMessageAsync();
 
             var queueName = $"test-outbox-{Guid.NewGuid()}";
-            var settings = Options.Create(new RabbitMqSettings
+            var settingsValue = new RabbitMqSettings
             {
                 HostName = _rabbitMq.Hostname,
                 Port = _rabbitMq.Port,
                 BatchSize = 10,
                 PollingIntervalSeconds = 1,
+                ConnectionMaxRetryAttempts = 3,
+                ConnectionInitialRetryDelaySeconds = 1,
+                ConnectionMaxRetryDelaySeconds = 5,
                 Queues = { [RabbitMqQueueNames.InventoryEvents] = queueName }
-            });
+            };
+            var settings = Options.Create(settingsValue);
 
-            var publisher = new RabbitMqOutboxPublisherHostedService(_postgres.ScopeFactory, settings);
+            var retryConfiguration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["RabbitMqSettings:HostName"] = settingsValue.HostName,
+                ["RabbitMqSettings:Port"] = settingsValue.Port.ToString(),
+                ["RabbitMqSettings:ConnectionMaxRetryAttempts"] = settingsValue.ConnectionMaxRetryAttempts.ToString(),
+                ["RabbitMqSettings:ConnectionInitialRetryDelaySeconds"] = settingsValue.ConnectionInitialRetryDelaySeconds.ToString(),
+                ["RabbitMqSettings:ConnectionMaxRetryDelaySeconds"] = settingsValue.ConnectionMaxRetryDelaySeconds.ToString()
+            }).Build();
+
+            var resilienceServices = new ServiceCollection();
+            resilienceServices.ConfigureOption<RabbitMqSettings>(retryConfiguration);
+            resilienceServices.AddRabbitMqConnectionResilience();
+            var pipelineProvider = resilienceServices.BuildServiceProvider()
+                .GetRequiredService<ResiliencePipelineProvider<string>>();
+
+            var publisher = new RabbitMqOutboxPublisherHostedService(_postgres.ScopeFactory, settings, pipelineProvider);
 
             await publisher.StartAsync(CancellationToken.None);
 
