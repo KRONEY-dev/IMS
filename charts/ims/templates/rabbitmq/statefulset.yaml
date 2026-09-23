@@ -19,6 +19,9 @@ spec:
         - name: rabbitmq
           image: "{{ .Values.rabbitmq.image.repository }}:{{ .Values.rabbitmq.image.tag }}"
           imagePullPolicy: {{ .Values.rabbitmq.image.pullPolicy }}
+          env:
+            - name: RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS
+              value: "+sbwt none +sbwtdcpu none +sbwtdio none"
           ports:
             - containerPort: {{ .Values.rabbitmq.amqpPort }}
             - containerPort: {{ .Values.rabbitmq.managementPort }}
