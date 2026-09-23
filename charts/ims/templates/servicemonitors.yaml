@@ -1,3 +1,4 @@
+{{- if .Capabilities.APIVersions.Has "monitoring.coreos.com/v1" }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -39,9 +40,7 @@ spec:
     matchLabels:
       {{- include "ims.selectorLabels" (dict "context" $ "component" "api-gateway") | nindent 6 }}
   endpoints:
-    - port: https
+    - port: http
       path: /metrics
-      scheme: https
-      tlsConfig:
-        insecureSkipVerify: true
       interval: 30s
+{{- end }}

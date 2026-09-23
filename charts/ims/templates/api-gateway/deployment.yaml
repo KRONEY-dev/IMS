@@ -22,14 +22,7 @@ spec:
             - name: ASPNETCORE_ENVIRONMENT
               value: Development
             - name: ASPNETCORE_URLS
-              value: "https://+:{{ .Values.apiGateway.port }}"
-            - name: Kestrel__Certificates__Default__Path
-              value: /app/Certs/gateway.pfx
-            - name: Kestrel__Certificates__Default__Password
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Release.Name }}-api-gateway
-                  key: cert-password
+              value: "http://+:{{ .Values.apiGateway.port }}"
             - name: ConnectionStrings__Redis
               value: "{{ .Release.Name }}-redis:{{ .Values.redis.port }}"
             - name: ReverseProxy__Clusters__accounts-cluster__Destinations__destination1__Address
@@ -40,33 +33,27 @@ spec:
               value: "127.0.0.1/32"
             - name: DocsAccessSettings__AllowedNetworks__1
               value: "::1/128"
+            - name: ForwardedHeadersSettings__TrustedNetworks__0
+              value: "10.244.0.0/16"
           volumeMounts:
             - name: jwt-public-key
               mountPath: /app/Keys/accounts-public.pem
               subPath: accounts-public.pem
-            - name: gateway-cert
-              mountPath: /app/Certs/gateway.pfx
-              subPath: gateway.pfx
           ports:
             - containerPort: {{ .Values.apiGateway.port }}
           readinessProbe:
             httpGet:
               path: /health/ready
               port: {{ .Values.apiGateway.port }}
-              scheme: HTTPS
             initialDelaySeconds: 5
             periodSeconds: 5
           livenessProbe:
             httpGet:
               path: /health/live
               port: {{ .Values.apiGateway.port }}
-              scheme: HTTPS
             initialDelaySeconds: 10
             periodSeconds: 10
       volumes:
         - name: jwt-public-key
           secret:
             secretName: ims-jwt-keys
-        - name: gateway-cert
-          secret:
-            secretName: ims-gateway-cert

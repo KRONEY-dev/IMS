@@ -170,11 +170,6 @@ jobs:
           openssl genrsa -out AccountsService/AccountsService.API/Keys/accounts-private.pem 2048
           openssl rsa -in AccountsService/AccountsService.API/Keys/accounts-private.pem -pubout -out ApiGateway/Keys/accounts-public.pem
 
-      - name: Generate Gateway HTTPS certificate for this run
-        run: |
-          mkdir -p ApiGateway/Certs
-          dotnet dev-certs https -ep ApiGateway/Certs/gateway.pfx -p "${{ secrets.CI_GATEWAY_CERT_PASSWORD }}"
-
       - name: Build application images
         run: |
           docker build -f AccountsService/AccountsService.API/Dockerfile -t ims-accounts-api:latest .
@@ -191,9 +186,6 @@ jobs:
       - name: Create JWT keys secret
         run: dotnet run scripts/k8s-create-jwt-secret.cs
 
-      - name: Create Gateway certificate secret
-        run: dotnet run scripts/k8s-create-gateway-cert-secret.cs
-
       - name: Materialize chart secrets from GitHub Actions Secrets
         run: |
           cat <<EOF > charts/ims/values-secrets.yaml
@@ -201,8 +193,6 @@ jobs:
             password: "${{ secrets.CI_ACCOUNTS_DB_PASSWORD }}"
           inventoryDb:
             password: "${{ secrets.CI_INVENTORY_DB_PASSWORD }}"
-          apiGateway:
-            certPassword: "${{ secrets.CI_GATEWAY_CERT_PASSWORD }}"
           EOF
 
       - name: Deploy the Helm chart
@@ -216,8 +206,8 @@ jobs:
         run: |
           kubectl port-forward svc/ims-api-gateway 18081:8081 &
           sleep 5
-          ready_code=$(curl -k -s -o /dev/null -w "%{http_code}" https://localhost:18081/health/ready)
-          login_code=$(curl -k -s -o /dev/null -w "%{http_code}" -X POST https://localhost:18081/accounts/api/Auth/Login -H "Content-Type: application/json" -d "{}")
+          ready_code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:18081/health/ready)
+          login_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:18081/accounts/api/Auth/Login -H "Content-Type: application/json" -d "{}")
           echo "gateway ready: $ready_code"
           echo "accounts login: $login_code"
           test "$ready_code" = "200"
