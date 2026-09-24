@@ -145,7 +145,7 @@ jobs:
 
   build-and-push-images:
     runs-on: ubuntu-latest
-    needs: build-and-test
+    needs: [build-and-test, migrate-check, helm-deploy-smoke-test]
     if: github.event_name == 'push'
     permissions:
       contents: read
