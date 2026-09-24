@@ -36,7 +36,7 @@ spec:
             - name: DocsAccessSettings__AllowedNetworks__1
               value: "::1/128"
             - name: ForwardedHeadersSettings__TrustedNetworks__0
-              value: "10.244.0.0/16"
+              value: {{ .Values.apiGateway.forwardedHeadersTrustedNetwork | quote }}
           resources:
             {{- toYaml .Values.apiGateway.resources | nindent 12 }}
           volumeMounts:

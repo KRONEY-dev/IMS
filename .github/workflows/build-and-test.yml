@@ -155,18 +155,23 @@ jobs:
           - image: ims-accounts-api
             dockerfile: AccountsService/AccountsService.API/Dockerfile
             target: ""
+            cache-scope: accounts
           - image: ims-accounts-migrate
             dockerfile: AccountsService/AccountsService.API/Dockerfile
             target: migrator
+            cache-scope: accounts
           - image: ims-inventory-api
             dockerfile: InventoryService/InventoryService.API/Dockerfile
             target: ""
+            cache-scope: inventory
           - image: ims-inventory-migrate
             dockerfile: InventoryService/InventoryService.API/Dockerfile
             target: migrator
+            cache-scope: inventory
           - image: ims-api-gateway
             dockerfile: ApiGateway/Dockerfile
             target: ""
+            cache-scope: api-gateway
 
     steps:
       - name: Checkout
@@ -190,8 +195,8 @@ jobs:
           target: ${{ matrix.target }}
           push: true
           tags: ghcr.io/kroney-dev/${{ matrix.image }}:sha-${{ github.sha }}
-          cache-from: type=gha,scope=${{ matrix.image }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+          cache-from: type=gha,scope=${{ matrix.cache-scope }}-amd64
+          cache-to: type=gha,mode=max,scope=${{ matrix.cache-scope }}-amd64
 
   helm-deploy-smoke-test:
     runs-on: ubuntu-latest
@@ -275,7 +280,7 @@ jobs:
           kubectl logs -l app.kubernetes.io/part-of=ims --all-containers --tail=200 || true
 
   build-and-push-images:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.platform.runner }}
     needs: [migrate-check, helm-deploy-smoke-test]
     if: github.event_name == 'push'
     permissions:
@@ -283,29 +288,38 @@ jobs:
       packages: write
     strategy:
       matrix:
-        include:
-          - image: ims-accounts-api
+        image:
+          - name: ims-accounts-api
             dockerfile: AccountsService/AccountsService.API/Dockerfile
             target: ""
-          - image: ims-accounts-migrate
+            cache-scope: accounts
+          - name: ims-accounts-migrate
             dockerfile: AccountsService/AccountsService.API/Dockerfile
             target: migrator
-          - image: ims-inventory-api
+            cache-scope: accounts
+          - name: ims-inventory-api
             dockerfile: InventoryService/InventoryService.API/Dockerfile
             target: ""
-          - image: ims-inventory-migrate
+            cache-scope: inventory
+          - name: ims-inventory-migrate
             dockerfile: InventoryService/InventoryService.API/Dockerfile
             target: migrator
-          - image: ims-api-gateway
+            cache-scope: inventory
+          - name: ims-api-gateway
             dockerfile: ApiGateway/Dockerfile
             target: ""
+            cache-scope: api-gateway
+        platform:
+          - id: amd64
+            runner: ubuntu-latest
+            docker-platform: linux/amd64
+          - id: arm64
+            runner: ubuntu-24.04-arm
+            docker-platform: linux/arm64
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-
-      - name: Set up QEMU (for arm64 builds)
-        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -317,14 +331,86 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push ${{ matrix.image }}
+      - name: Build and push ${{ matrix.image.name }} (${{ matrix.platform.id }})
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: ${{ matrix.dockerfile }}
-          target: ${{ matrix.target }}
-          platforms: linux/amd64,linux/arm64
+          file: ${{ matrix.image.dockerfile }}
+          target: ${{ matrix.image.target }}
+          platforms: ${{ matrix.platform.docker-platform }}
           push: true
-          tags: ghcr.io/kroney-dev/${{ matrix.image }}:latest
-          cache-from: type=gha,scope=${{ matrix.image }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+          tags: ghcr.io/kroney-dev/${{ matrix.image.name }}:latest-${{ matrix.platform.id }}
+          cache-from: type=gha,scope=${{ matrix.image.cache-scope }}-${{ matrix.platform.id }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image.cache-scope }}-${{ matrix.platform.id }}
+
+  publish-multiarch-manifests:
+    runs-on: ubuntu-latest
+    needs: build-and-push-images
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        image: [ims-accounts-api, ims-accounts-migrate, ims-inventory-api, ims-inventory-migrate, ims-api-gateway]
+
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Combine amd64+arm64 into one manifest
+        run: |
+          docker buildx imagetools create \
+            -t ghcr.io/kroney-dev/${{ matrix.image }}:latest \
+            ghcr.io/kroney-dev/${{ matrix.image }}:latest-amd64 \
+            ghcr.io/kroney-dev/${{ matrix.image }}:latest-arm64
+
+  deploy-to-oracle:
+    runs-on: ubuntu-latest
+    needs: publish-multiarch-manifests
+    if: github.event_name == 'push'
+    concurrency:
+      group: deploy-to-oracle
+      cancel-in-progress: false
+
+    steps:
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.ORACLE_SSH_KEY }}" > ~/.ssh/oracle_key
+          chmod 600 ~/.ssh/oracle_key
+          echo "${{ secrets.ORACLE_HOST }} ${{ secrets.ORACLE_HOST_KEY }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy to Oracle Cloud
+        run: |
+          ssh -i ~/.ssh/oracle_key ubuntu@${{ secrets.ORACLE_HOST }} '
+            export KUBECONFIG=~/.kube/config
+            cd ~/IMS
+            git fetch origin
+            git reset --hard origin/main
+            helm upgrade --install ims charts/ims -f charts/ims/values-oracle.yaml -f charts/ims/values-secrets.yaml --wait --timeout 5m
+          '
+
+      - name: Verify the live deployment
+        run: |
+          ready_code=$(curl -s -o /dev/null -w "%{http_code}" https://ims-main.duckdns.org/health/ready)
+          echo "production health: $ready_code"
+          test "$ready_code" = "200"
+
+      - name: Roll back on failure
+        if: failure()
+        run: |
+          ssh -i ~/.ssh/oracle_key ubuntu@${{ secrets.ORACLE_HOST }} '
+            export KUBECONFIG=~/.kube/config
+            helm rollback ims --wait --timeout 5m
+          '
+          sleep 5
+          rollback_code=$(curl -s -o /dev/null -w "%{http_code}" https://ims-main.duckdns.org/health/ready)
+          echo "post-rollback health: $rollback_code"

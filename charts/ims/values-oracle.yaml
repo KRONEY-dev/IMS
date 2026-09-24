@@ -26,6 +26,11 @@ apiGateway:
     repository: ghcr.io/kroney-dev/ims-api-gateway
     tag: latest
     pullPolicy: Always
+  # ingress-nginx runs with hostNetwork here, but its traffic to the Gateway's
+  # ClusterIP still gets SNAT'd to the CNI bridge gateway (10.42.0.1) rather
+  # than the node's real IP — confirmed live from the Gateway's own blocked-
+  # access log, not assumed. k3s's pod network is 10.42.0.0/16.
+  forwardedHeadersTrustedNetwork: "10.42.0.0/16"
 
 ingress:
   host: ims-main.duckdns.org

@@ -1,0 +1,14 @@
+# Overlay applied on top of the kube-prometheus-stack chart defaults, for the
+# Oracle Cloud deployment:
+# helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+#   --namespace monitoring -f charts/monitoring/kube-prometheus-stack-values-oracle.yaml
+grafana:
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - ims-grafana.duckdns.org
+    tls:
+      - secretName: grafana-tls
+        hosts:
+          - ims-grafana.duckdns.org

@@ -94,6 +94,7 @@ apiGateway:
     pullPolicy: Never
   replicaCount: 1
   port: 8081
+  forwardedHeadersTrustedNetwork: "10.244.0.0/16"
   resources:
     requests:
       cpu: 150m
