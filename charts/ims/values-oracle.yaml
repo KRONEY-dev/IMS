@@ -1,0 +1,35 @@
+# Overlay for the Oracle Cloud deployment: images pulled from GHCR instead of
+# loaded locally, real domain, and TLS from a Let's Encrypt ClusterIssuer
+# instead of the local self-signed CA.
+accountsApi:
+  image:
+    repository: ghcr.io/kroney-dev/ims-accounts-api
+    tag: latest
+    pullPolicy: IfNotPresent
+  migrationImage:
+    repository: ghcr.io/kroney-dev/ims-accounts-migrate
+    tag: latest
+    pullPolicy: IfNotPresent
+
+inventoryApi:
+  image:
+    repository: ghcr.io/kroney-dev/ims-inventory-api
+    tag: latest
+    pullPolicy: IfNotPresent
+  migrationImage:
+    repository: ghcr.io/kroney-dev/ims-inventory-migrate
+    tag: latest
+    pullPolicy: IfNotPresent
+
+apiGateway:
+  image:
+    repository: ghcr.io/kroney-dev/ims-api-gateway
+    tag: latest
+    pullPolicy: IfNotPresent
+
+ingress:
+  host: ims-main.duckdns.org
+
+certManager:
+  createSelfSignedCA: false
+  issuerName: letsencrypt-prod

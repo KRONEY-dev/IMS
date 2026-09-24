@@ -109,3 +109,7 @@ apiGateway:
 
 ingress:
   host: ims.local
+
+certManager:
+  createSelfSignedCA: true
+  issuerName: ims-ca-issuer
