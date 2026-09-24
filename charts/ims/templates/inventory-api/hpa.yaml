@@ -1,0 +1,22 @@
+{{- if .Values.inventoryApi.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ .Release.Name }}-inventory-api
+  labels:
+    {{- include "ims.componentLabels" (dict "context" $ "component" "inventory-api") | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ .Release.Name }}-inventory-api
+  minReplicas: {{ .Values.inventoryApi.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.inventoryApi.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.inventoryApi.autoscaling.targetCPUUtilizationPercentage }}
+{{- end }}

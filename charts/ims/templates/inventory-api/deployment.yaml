@@ -5,7 +5,9 @@ metadata:
   labels:
     {{- include "ims.componentLabels" (dict "context" $ "component" "inventory-api") | nindent 4 }}
 spec:
+  {{- if not .Values.inventoryApi.autoscaling.enabled }}
   replicas: {{ .Values.inventoryApi.replicaCount }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "ims.selectorLabels" (dict "context" $ "component" "inventory-api") | nindent 6 }}
@@ -62,6 +64,8 @@ spec:
               value: "{{ .Values.rabbitmq.amqpPort }}"
             - name: RabbitMqSettings__Queues__InventoryEvents
               value: "stock-quantity-changed"
+          resources:
+            {{- toYaml .Values.inventoryApi.resources | nindent 12 }}
           ports:
             - containerPort: {{ .Values.inventoryApi.port }}
           readinessProbe:

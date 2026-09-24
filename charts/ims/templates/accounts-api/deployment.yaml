@@ -5,7 +5,9 @@ metadata:
   labels:
     {{- include "ims.componentLabels" (dict "context" $ "component" "accounts-api") | nindent 4 }}
 spec:
+  {{- if not .Values.accountsApi.autoscaling.enabled }}
   replicas: {{ .Values.accountsApi.replicaCount }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "ims.selectorLabels" (dict "context" $ "component" "accounts-api") | nindent 6 }}
@@ -56,6 +58,8 @@ spec:
               value: "{{ .Release.Name }}-redis:{{ .Values.redis.port }}"
             - name: OpenApi__GatewayBasePath
               value: "/accounts"
+          resources:
+            {{- toYaml .Values.accountsApi.resources | nindent 12 }}
           volumeMounts:
             - name: jwt-private-key
               mountPath: /app/Keys/accounts-private.pem

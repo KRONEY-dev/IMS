@@ -5,7 +5,9 @@ metadata:
   labels:
     {{- include "ims.componentLabels" (dict "context" $ "component" "api-gateway") | nindent 4 }}
 spec:
+  {{- if not .Values.apiGateway.autoscaling.enabled }}
   replicas: {{ .Values.apiGateway.replicaCount }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "ims.selectorLabels" (dict "context" $ "component" "api-gateway") | nindent 6 }}
@@ -35,6 +37,8 @@ spec:
               value: "::1/128"
             - name: ForwardedHeadersSettings__TrustedNetworks__0
               value: "10.244.0.0/16"
+          resources:
+            {{- toYaml .Values.apiGateway.resources | nindent 12 }}
           volumeMounts:
             - name: jwt-public-key
               mountPath: /app/Keys/accounts-public.pem

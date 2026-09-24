@@ -1,0 +1,22 @@
+{{- if .Values.accountsApi.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ .Release.Name }}-accounts-api
+  labels:
+    {{- include "ims.componentLabels" (dict "context" $ "component" "accounts-api") | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ .Release.Name }}-accounts-api
+  minReplicas: {{ .Values.accountsApi.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.accountsApi.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.accountsApi.autoscaling.targetCPUUtilizationPercentage }}
+{{- end }}
