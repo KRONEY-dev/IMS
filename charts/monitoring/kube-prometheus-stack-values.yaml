@@ -1,0 +1,13 @@
+# Overlay applied on top of the kube-prometheus-stack chart defaults:
+# helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+#   --namespace monitoring -f charts/monitoring/kube-prometheus-stack-values.yaml
+grafana:
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - grafana.ims.local
+    tls:
+      - secretName: grafana-tls
+        hosts:
+          - grafana.ims.local
