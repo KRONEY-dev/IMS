@@ -2,6 +2,13 @@
 # Oracle Cloud deployment:
 # helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
 #   --namespace monitoring -f charts/monitoring/kube-prometheus-stack-values-oracle.yaml
+prometheus:
+  prometheusSpec:
+    # Chart default requires ServiceMonitors to carry a "release: <this
+    # release name>" label; our own chart's ServiceMonitors don't (they use
+    # the app's own Helm labels), so cluster-wide discovery is needed instead.
+    serviceMonitorSelectorNilUsesHelmValues: false
+
 grafana:
   ingress:
     enabled: true
