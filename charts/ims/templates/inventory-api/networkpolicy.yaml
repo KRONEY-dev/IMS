@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-inventory-api
+  labels:
+    {{- include "ims.componentLabels" (dict "context" $ "component" "inventory-api") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "ims.selectorLabels" (dict "context" $ "component" "inventory-api") | nindent 6 }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "ims.selectorLabels" (dict "context" $ "component" "api-gateway") | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.inventoryApi.port }}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: {{ .Values.inventoryApi.port }}
