@@ -26,10 +26,6 @@ namespace AccountsService.Application.Services
 
         private readonly JwtSettings _jwtSettings;
 
-        // Lazily computed once and reused - a fixed hash to verify against when no user was
-        // found, so a login attempt for a non-existent account costs the same real PBKDF2
-        // verification as a wrong-password attempt, instead of returning instantly and
-        // letting response time reveal whether the account exists.
         private static string? _dummyPasswordHash;
 
         public AuthScopedService(IUnitOfWork unitOfWork, IRequestContext requestContext, IMapperWrapper mapper,
@@ -126,18 +122,14 @@ namespace AccountsService.Application.Services
 
             var rotateOperations = new List<IDirectOperation>
             {
-                _refreshTokenRepository.BuildRotateOperation(token.Id, newRefreshToken.Id),
-                _refreshTokenRepository.BuildCreateOperation(newRefreshToken)
+                _refreshTokenRepository.BuildCreateOperation(newRefreshToken),
+                _refreshTokenRepository.BuildRotateOperation(token.Id, newRefreshToken.Id)
             };
 
             var rotated = await UnitOfWork.ExecuteInTransactionAsync(rotateOperations, cancellationToken);
 
             if (!rotated)
             {
-                // Another request rotated this exact token in the moment between our read and
-                // our write - two requests racing a single still-valid token is itself the
-                // reuse signature, so the whole session chain (including whichever request won
-                // the race) is treated as compromised, same as reuse detected past the grace period.
                 var tokensRevokeOperation = _refreshTokenRepository.RevokeChainBySessionId(token.SessionId);
                 await UnitOfWork.ExecuteInTransactionAsync(tokensRevokeOperation, cancellationToken);
 

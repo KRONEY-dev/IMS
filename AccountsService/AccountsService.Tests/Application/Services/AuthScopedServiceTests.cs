@@ -193,8 +193,6 @@ namespace AccountsService.Tests.Application.Services
                 .Setup(repo => repo.BuildCreateOperation(It.IsAny<RefreshToken>()))
                 .Returns(Mock.Of<IDirectOperation>());
 
-            // Someone else rotated this exact token first - the conditional update matches
-            // 0 rows, so the composite transaction rolls back and reports failure.
             _unitOfWorkMock
                 .Setup(uow => uow.ExecuteInTransactionAsync(It.IsAny<IReadOnlyList<IDirectOperation>>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(false);
@@ -288,6 +286,58 @@ namespace AccountsService.Tests.Application.Services
             _unitOfWorkMock.Verify(
                 uow => uow.ExecuteInTransactionAsync(It.IsAny<IReadOnlyList<IDirectOperation>>(), It.IsAny<CancellationToken>()),
                 Times.Once);
+        }
+
+        [Fact]
+        public async Task RefreshAccessTokenAsync_ValidToken_CreatesNewTokenBeforeRotatingOld()
+        {
+            var sessionId = Guid.NewGuid();
+            var user = new User("Test", "User", "test@ims.local", "+10000000000", UserRole.Worker, "password-hash");
+            var token = RefreshToken.Create(user.Id, sessionId, "correct-hash", TimeSpan.FromDays(7));
+            var createOperation = Mock.Of<IDirectOperation>();
+            var rotateOperation = Mock.Of<IDirectOperation>();
+
+            _refreshTokenRepositoryMock
+                .Setup(repo => repo.GetByIdAsync(token.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(token);
+
+            _tokenSignerServiceMock
+                .Setup(signer => signer.HashRefreshSecret("raw-token"))
+                .Returns("correct-hash");
+
+            _userRepositoryMock
+                .Setup(repo => repo.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(user);
+
+            _tokenSignerServiceMock
+                .Setup(signer => signer.SignAccessToken(It.IsAny<IEnumerable<Claim>>(), It.IsAny<TimeSpan>()))
+                .Returns("fixed-access-token");
+
+            _tokenSignerServiceMock
+                .Setup(signer => signer.GenerateRefreshSecret())
+                .Returns(("raw-secret", "new-hash"));
+
+            _refreshTokenRepositoryMock
+                .Setup(repo => repo.BuildCreateOperation(It.IsAny<RefreshToken>()))
+                .Returns(createOperation);
+
+            _refreshTokenRepositoryMock
+                .Setup(repo => repo.BuildRotateOperation(token.Id, It.IsAny<Guid>()))
+                .Returns(rotateOperation);
+
+            IReadOnlyList<IDirectOperation>? capturedOperations = null;
+
+            _unitOfWorkMock
+                .Setup(uow => uow.ExecuteInTransactionAsync(It.IsAny<IReadOnlyList<IDirectOperation>>(), It.IsAny<CancellationToken>()))
+                .Callback<IReadOnlyList<IDirectOperation>, CancellationToken>((operations, _) => capturedOperations = operations)
+                .ReturnsAsync(true);
+
+            var sut = CreateSut();
+
+            await sut.RefreshAccessTokenAsync(BuildRequest(token.Id, "raw-token"), CancellationToken.None);
+
+            Assert.NotNull(capturedOperations);
+            Assert.Equal([createOperation, rotateOperation], capturedOperations);
         }
 
         [Fact]

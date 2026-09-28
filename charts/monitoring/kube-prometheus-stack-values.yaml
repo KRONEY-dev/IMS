@@ -3,9 +3,6 @@
 #   --namespace monitoring -f charts/monitoring/kube-prometheus-stack-values.yaml
 prometheus:
   prometheusSpec:
-    # Chart default requires ServiceMonitors to carry a "release: <this
-    # release name>" label; our own chart's ServiceMonitors don't (they use
-    # the app's own Helm labels), so cluster-wide discovery is needed instead.
     serviceMonitorSelectorNilUsesHelmValues: false
 
 grafana:

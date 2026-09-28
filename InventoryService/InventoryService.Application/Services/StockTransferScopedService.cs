@@ -113,8 +113,6 @@ namespace InventoryService.Application.Services
             return Mapper.Map<StockTransferServiceDTOs.StockTransferDTO>(transfer);
         }
 
-        // A transfer spans two warehouses, so access follows either leg — a Worker assigned
-        // to just the source or just the destination still needs to see it.
         private bool HasTransferAccess(StockTransfer transfer)
         {
             if (Convert.ToInt32(RequestContext.GetRole<UserRole>()) <= Convert.ToInt32(UserRole.Manager))

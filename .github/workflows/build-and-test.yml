@@ -369,6 +369,7 @@ jobs:
         run: |
           docker buildx imagetools create \
             -t ghcr.io/kroney-dev/${{ matrix.image }}:latest \
+            -t ghcr.io/kroney-dev/${{ matrix.image }}:sha-${{ github.sha }} \
             ghcr.io/kroney-dev/${{ matrix.image }}:latest-amd64 \
             ghcr.io/kroney-dev/${{ matrix.image }}:latest-arm64
 
@@ -395,7 +396,13 @@ jobs:
             cd ~/IMS
             git fetch origin
             git reset --hard origin/main
-            helm upgrade --install ims charts/ims -f charts/ims/values-oracle.yaml -f charts/ims/values-secrets.yaml --wait --timeout 5m
+            helm upgrade --install ims charts/ims -f charts/ims/values-oracle.yaml -f charts/ims/values-secrets.yaml \
+              --set accountsApi.image.tag=sha-${{ github.sha }} \
+              --set accountsApi.migrationImage.tag=sha-${{ github.sha }} \
+              --set inventoryApi.image.tag=sha-${{ github.sha }} \
+              --set inventoryApi.migrationImage.tag=sha-${{ github.sha }} \
+              --set apiGateway.image.tag=sha-${{ github.sha }} \
+              --wait --timeout 5m
           '
 
       - name: Verify the live deployment

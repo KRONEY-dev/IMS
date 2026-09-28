@@ -62,8 +62,6 @@ namespace AccountsService.Tests.Integration.Jobs
             await using var scope = _postgres.ScopeFactory.CreateAsyncScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<AccountsDbContext>();
 
-            // Phone number is irrelevant to this test and this helper seeds several users per
-            // test - null avoids colliding with the unique index on PhoneNumber.
             var user = new User("Test", "User", null, null, UserRole.Worker, "hash");
             dbContext.Users.Add(user);
 
