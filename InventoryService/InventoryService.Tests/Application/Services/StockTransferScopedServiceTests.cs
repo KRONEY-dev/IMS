@@ -69,7 +69,7 @@ namespace InventoryService.Tests.Application.Services
         public async Task InitiateAsync_SourceStockItemNotFound_ThrowsNotFoundException()
         {
             var stockItemId = Guid.NewGuid();
-            SetActor(UserRole.Worker);
+            SetActor(UserRole.Manager);
 
             _stockItemRepositoryMock
                 .Setup(repo => repo.GetByIdAsync(stockItemId, It.IsAny<CancellationToken>()))
@@ -88,7 +88,7 @@ namespace InventoryService.Tests.Application.Services
         public async Task InitiateAsync_BatchMismatch_ThrowsStockItemBatchMismatchException()
         {
             var sourceItem = StockItem.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 20, 5m);
-            SetActor(UserRole.Worker);
+            SetActor(UserRole.Manager);
 
             _stockItemRepositoryMock
                 .Setup(repo => repo.GetByIdAsync(sourceItem.Id, It.IsAny<CancellationToken>()))
@@ -104,10 +104,24 @@ namespace InventoryService.Tests.Application.Services
         }
 
         [Fact]
-        public async Task InitiateAsync_WorkerWithoutSourceWarehouseAccess_ThrowsInsufficientPermissionsException()
+        public async Task InitiateAsync_CallerBelowManager_ThrowsInsufficientPermissionsException()
+        {
+            SetActor(UserRole.Worker);
+
+            var sut = CreateSut();
+
+            var request = new StockTransferServiceDTOs.InitiateTransferRequestDTO(
+                Guid.NewGuid(), DateTime.UtcNow.AddDays(3),
+                [new StockTransferServiceDTOs.StockTransferLineDTO(Guid.NewGuid(), Guid.NewGuid(), 5)]);
+
+            await Assert.ThrowsAsync<InsufficientPermissionsException>(() => sut.InitiateAsync(request, CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task InitiateAsync_ManagerWithoutSourceWarehouseAccess_ThrowsInsufficientPermissionsException()
         {
             var sourceItem = StockItem.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 20, 5m);
-            SetActor(UserRole.Worker, warehouseIds: [Guid.NewGuid()]);
+            SetActor(UserRole.Manager, warehouseIds: [Guid.NewGuid()]);
 
             _stockItemRepositoryMock
                 .Setup(repo => repo.GetByIdAsync(sourceItem.Id, It.IsAny<CancellationToken>()))
@@ -476,6 +490,85 @@ namespace InventoryService.Tests.Application.Services
 
             await Assert.ThrowsAsync<NotFoundException>(() => sut.GetByIdAsync(
                 new StockTransferServiceDTOs.GetStockTransferByIdRequestDTO(transferId), CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_WorkerWithSourceWarehouseAccessOnly_ReturnsTransfer()
+        {
+            var sourceWarehouseId = Guid.NewGuid();
+            var transfer = CreateTransfer(sourceWarehouseId, Guid.NewGuid());
+            SetActor(UserRole.Worker, warehouseIds: [sourceWarehouseId]);
+
+            _stockTransferRepositoryMock
+                .Setup(repo => repo.GetByIdAsync(transfer.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(transfer);
+
+            var sut = CreateSut();
+
+            await sut.GetByIdAsync(
+                new StockTransferServiceDTOs.GetStockTransferByIdRequestDTO(transfer.Id), CancellationToken.None);
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_WorkerWithDestinationWarehouseAccessOnly_ReturnsTransfer()
+        {
+            var destinationWarehouseId = Guid.NewGuid();
+            var transfer = CreateTransfer(Guid.NewGuid(), destinationWarehouseId);
+            SetActor(UserRole.Worker, warehouseIds: [destinationWarehouseId]);
+
+            _stockTransferRepositoryMock
+                .Setup(repo => repo.GetByIdAsync(transfer.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(transfer);
+
+            var sut = CreateSut();
+
+            await sut.GetByIdAsync(
+                new StockTransferServiceDTOs.GetStockTransferByIdRequestDTO(transfer.Id), CancellationToken.None);
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_WorkerWithNeitherWarehouseAccess_ThrowsInsufficientPermissionsException()
+        {
+            var transfer = CreateTransfer(Guid.NewGuid(), Guid.NewGuid());
+            SetActor(UserRole.Worker, warehouseIds: [Guid.NewGuid()]);
+
+            _stockTransferRepositoryMock
+                .Setup(repo => repo.GetByIdAsync(transfer.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(transfer);
+
+            var sut = CreateSut();
+
+            await Assert.ThrowsAsync<InsufficientPermissionsException>(() => sut.GetByIdAsync(
+                new StockTransferServiceDTOs.GetStockTransferByIdRequestDTO(transfer.Id), CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task GetShipmentByIdAsync_FiltersOutTransfersWorkerCannotAccess()
+        {
+            var shipmentId = Guid.NewGuid();
+            var accessibleWarehouseId = Guid.NewGuid();
+            var accessibleTransfer = CreateTransfer(accessibleWarehouseId, Guid.NewGuid());
+            var inaccessibleTransfer = CreateTransfer(Guid.NewGuid(), Guid.NewGuid());
+            SetActor(UserRole.Worker, warehouseIds: [accessibleWarehouseId]);
+
+            _stockTransferRepositoryMock
+                .Setup(repo => repo.GetByShipmentIdAsync(shipmentId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([accessibleTransfer, inaccessibleTransfer]);
+
+            _mapperMock
+                .Setup(mapper => mapper.Map<List<StockTransferServiceDTOs.StockTransferDTO>>(
+                    It.Is<List<StockTransfer>>(list => list.Count == 1 && list[0].Id == accessibleTransfer.Id)))
+                .Returns([]);
+
+            var sut = CreateSut();
+
+            await sut.GetShipmentByIdAsync(
+                new StockTransferServiceDTOs.GetShipmentByIdRequestDTO(shipmentId), CancellationToken.None);
+
+            _mapperMock.Verify(
+                mapper => mapper.Map<List<StockTransferServiceDTOs.StockTransferDTO>>(
+                    It.Is<List<StockTransfer>>(list => list.Count == 1 && list[0].Id == accessibleTransfer.Id)),
+                Times.Once);
         }
     }
 }

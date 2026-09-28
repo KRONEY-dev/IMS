@@ -6,7 +6,7 @@ namespace InventoryService.Application.Repositories.Interfaces
 {
     public interface ILowStockAlertRepository : IBaseEntityRepository<LowStockAlert>
     {
-        Task<List<LowStockAlert>> GetAllAsync(CancellationToken cancellationToken);
+        Task<List<LowStockAlert>> GetAllAsync(IReadOnlyList<Guid>? warehouseIds, CancellationToken cancellationToken);
 
         IDirectOperation BuildCreateOperation(LowStockAlert alert);
 

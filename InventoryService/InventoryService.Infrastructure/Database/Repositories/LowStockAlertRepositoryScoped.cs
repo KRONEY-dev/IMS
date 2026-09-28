@@ -12,9 +12,13 @@ namespace InventoryService.Infrastructure.Database.Repositories
     {
         protected override DbSet<LowStockAlert> MainTable => DbContext.LowStockAlerts;
 
-        public Task<List<LowStockAlert>> GetAllAsync(CancellationToken cancellationToken)
+        public Task<List<LowStockAlert>> GetAllAsync(IReadOnlyList<Guid>? warehouseIds, CancellationToken cancellationToken)
         {
-            return MainTable.ToListAsync(cancellationToken);
+            var query = warehouseIds is null
+                ? MainTable
+                : MainTable.Where(LowStockAlert.BelongsToWarehouses(warehouseIds));
+
+            return query.ToListAsync(cancellationToken);
         }
 
         public IDirectOperation BuildCreateOperation(LowStockAlert alert)

@@ -54,6 +54,60 @@ namespace InventoryService.Tests.Application.Services
         }
 
         [Fact]
+        public async Task GetByIdAsync_WorkerWithoutWarehouseAccess_ThrowsInsufficientPermissionsException()
+        {
+            var alert = LowStockAlert.Create(Guid.NewGuid(), Guid.NewGuid());
+            SetActor(UserRole.Worker, warehouseIds: [Guid.NewGuid()]);
+
+            _lowStockAlertRepositoryMock
+                .Setup(repo => repo.GetByIdAsync(alert.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(alert);
+
+            var sut = CreateSut();
+
+            await Assert.ThrowsAsync<InsufficientPermissionsException>(() => sut.GetByIdAsync(
+                new LowStockAlertServiceDTOs.GetLowStockAlertByIdRequestDTO(alert.Id), CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task GetAllAsync_Worker_FiltersToOwnWarehouses()
+        {
+            var warehouseId = Guid.NewGuid();
+            SetActor(UserRole.Worker, warehouseIds: [warehouseId]);
+
+            _lowStockAlertRepositoryMock
+                .Setup(repo => repo.GetAllAsync(It.IsAny<IReadOnlyList<Guid>?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync([]);
+
+            var sut = CreateSut();
+
+            await sut.GetAllAsync(new LowStockAlertServiceDTOs.GetAllLowStockAlertsRequestDTO(), CancellationToken.None);
+
+            _lowStockAlertRepositoryMock.Verify(
+                repo => repo.GetAllAsync(
+                    It.Is<IReadOnlyList<Guid>?>(ids => ids != null && ids.SequenceEqual(new[] { warehouseId })),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task GetAllAsync_Manager_PassesNoWarehouseFilter()
+        {
+            SetActor(UserRole.Manager, warehouseIds: [Guid.NewGuid()]);
+
+            _lowStockAlertRepositoryMock
+                .Setup(repo => repo.GetAllAsync(It.IsAny<IReadOnlyList<Guid>?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync([]);
+
+            var sut = CreateSut();
+
+            await sut.GetAllAsync(new LowStockAlertServiceDTOs.GetAllLowStockAlertsRequestDTO(), CancellationToken.None);
+
+            _lowStockAlertRepositoryMock.Verify(
+                repo => repo.GetAllAsync(null, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
         public async Task ResolveAsync_CallerBelowManager_ThrowsInsufficientPermissionsException()
         {
             SetActor(UserRole.Worker);

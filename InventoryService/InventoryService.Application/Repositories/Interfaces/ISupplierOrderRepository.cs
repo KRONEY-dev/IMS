@@ -6,7 +6,7 @@ namespace InventoryService.Application.Repositories.Interfaces
 {
     public interface ISupplierOrderRepository : IBaseEntityRepository<SupplierOrder>
     {
-        Task<List<SupplierOrder>> GetAllAsync(CancellationToken cancellationToken);
+        Task<List<SupplierOrder>> GetAllAsync(IReadOnlyList<Guid>? warehouseIds, CancellationToken cancellationToken);
 
         Task<List<SupplierOrder>> GetArrivingByAsync(DateTime cutoff, CancellationToken cancellationToken);
 

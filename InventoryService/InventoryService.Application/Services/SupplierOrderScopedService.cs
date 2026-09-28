@@ -63,7 +63,8 @@ namespace InventoryService.Application.Services
         public async Task<SupplierOrderServiceDTOs.GetAllSupplierOrdersResponseDTO> GetAllAsync(
             SupplierOrderServiceDTOs.GetAllSupplierOrdersRequestDTO request, CancellationToken cancellationToken)
         {
-            var orders = await _supplierOrderRepository.GetAllAsync(cancellationToken);
+            var warehouseIds = RequestContext.GetAccessibleWarehouseIds(UserRole.Manager);
+            var orders = await _supplierOrderRepository.GetAllAsync(warehouseIds, cancellationToken);
             var dtos = new List<SupplierOrderServiceDTOs.SupplierOrderDTO>();
 
             foreach (var order in orders)
@@ -80,6 +81,8 @@ namespace InventoryService.Application.Services
         {
             var order = await _supplierOrderRepository.GetByIdAsync(request.SupplierOrderId, cancellationToken)
                 ?? throw new NotFoundException(nameof(SupplierOrder), request.SupplierOrderId);
+
+            RequestContext.EnsureWarehouseAccess(order.WarehouseId, UserRole.Manager);
 
             var items = await _supplierOrderItemRepository.GetBySupplierOrderIdAsync(order.Id, cancellationToken);
 

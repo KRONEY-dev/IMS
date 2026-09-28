@@ -51,6 +51,11 @@ namespace InventoryService.Domain.Entities
                 && alert.Status == LowStockAlertStatus.Active;
         }
 
+        public static Expression<Func<LowStockAlert, bool>> BelongsToWarehouses(IReadOnlyList<Guid> warehouseIds)
+        {
+            return alert => warehouseIds.Contains(alert.WarehouseId);
+        }
+
         public readonly record struct ResolutionTransition(LowStockAlertStatus Status, DateTime ResolvedAt);
 
         public static ResolutionTransition AutoResolveTransition()

@@ -595,9 +595,83 @@ namespace InventoryService.Tests.Application.Services
         }
 
         [Fact]
+        public async Task GetStockItemByIdAsync_WorkerWithoutWarehouseAccess_ThrowsInsufficientPermissionsException()
+        {
+            var stockItem = StockItem.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 10, 5m);
+            SetActor(UserRole.Worker, warehouseIds: [Guid.NewGuid()]);
+
+            _stockItemRepositoryMock
+                .Setup(repo => repo.GetByIdAsync(stockItem.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(stockItem);
+
+            var sut = CreateSut();
+
+            await Assert.ThrowsAsync<InsufficientPermissionsException>(() => sut.GetStockItemByIdAsync(
+                new StockServiceDTOs.GetStockItemByIdRequestDTO(stockItem.Id), CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task GetAllStockItemsAsync_Worker_FiltersToOwnWarehouses()
+        {
+            var warehouseId = Guid.NewGuid();
+            SetActor(UserRole.Worker, warehouseIds: [warehouseId]);
+
+            _stockItemRepositoryMock
+                .Setup(repo => repo.GetAllAsync(It.IsAny<IReadOnlyList<Guid>?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync([]);
+
+            var sut = CreateSut();
+
+            await sut.GetAllStockItemsAsync(new StockServiceDTOs.GetAllStockItemsRequestDTO(), CancellationToken.None);
+
+            _stockItemRepositoryMock.Verify(
+                repo => repo.GetAllAsync(
+                    It.Is<IReadOnlyList<Guid>?>(ids => ids != null && ids.SequenceEqual(new[] { warehouseId })),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task GetAllStockItemsAsync_Manager_PassesNoWarehouseFilter()
+        {
+            SetActor(UserRole.Manager, warehouseIds: [Guid.NewGuid()]);
+
+            _stockItemRepositoryMock
+                .Setup(repo => repo.GetAllAsync(It.IsAny<IReadOnlyList<Guid>?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync([]);
+
+            var sut = CreateSut();
+
+            await sut.GetAllStockItemsAsync(new StockServiceDTOs.GetAllStockItemsRequestDTO(), CancellationToken.None);
+
+            _stockItemRepositoryMock.Verify(
+                repo => repo.GetAllAsync(null, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetMovementsByStockItemIdAsync_WorkerWithoutWarehouseAccess_ThrowsInsufficientPermissionsException()
+        {
+            var stockItem = StockItem.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 10, 5m);
+            SetActor(UserRole.Worker, warehouseIds: [Guid.NewGuid()]);
+
+            _stockItemRepositoryMock
+                .Setup(repo => repo.GetByIdAsync(stockItem.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(stockItem);
+
+            var sut = CreateSut();
+
+            await Assert.ThrowsAsync<InsufficientPermissionsException>(() => sut.GetMovementsByStockItemIdAsync(
+                new StockServiceDTOs.GetMovementsByStockItemIdRequestDTO(stockItem.Id), CancellationToken.None));
+        }
+
+        [Fact]
         public async Task GetMovementsByStockItemIdAsync_ReturnsMappedMovements()
         {
-            var stockItemId = Guid.NewGuid();
+            var warehouseId = Guid.NewGuid();
+            var stockItem = StockItem.Create(Guid.NewGuid(), warehouseId, Guid.NewGuid(), 10, 5m);
+            var stockItemId = stockItem.Id;
+            SetActor(UserRole.Worker, warehouseIds: [warehouseId]);
+
             var movements = new List<StockMovement>
             {
                 StockMovement.Create(stockItemId, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 5m,
@@ -609,6 +683,10 @@ namespace InventoryService.Tests.Application.Services
                 new(movements[0].Id, stockItemId, movements[0].ProductId, movements[0].WarehouseId, movements[0].BatchId,
                     5m, StockMovementType.In, 10, null, movements[0].InitiatedByUserId, movements[0].PerformedByUserId, movements[0].CreatedAt)
             };
+
+            _stockItemRepositoryMock
+                .Setup(repo => repo.GetByIdAsync(stockItemId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(stockItem);
 
             _stockMovementRepositoryMock
                 .Setup(repo => repo.GetByStockItemIdAsync(stockItemId, It.IsAny<CancellationToken>()))

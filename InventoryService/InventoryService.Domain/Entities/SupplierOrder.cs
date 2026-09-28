@@ -64,6 +64,11 @@ namespace InventoryService.Domain.Entities
                 && order.ExpectedDeliveryDate != null && order.ExpectedDeliveryDate <= cutoff;
         }
 
+        public static Expression<Func<SupplierOrder, bool>> BelongsToWarehouses(IReadOnlyList<Guid> warehouseIds)
+        {
+            return order => warehouseIds.Contains(order.WarehouseId);
+        }
+
         public readonly record struct ReceiptTransition(SupplierOrderStatus Status, DateTime ReceivedAt);
 
         public static ReceiptTransition ReceiveTransition()

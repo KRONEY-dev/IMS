@@ -6,7 +6,7 @@ namespace InventoryService.Application.Repositories.Interfaces
 {
     public interface IStockItemRepository : IBaseEntityRepository<StockItem>
     {
-        Task<List<StockItem>> GetAllAsync(CancellationToken cancellationToken);
+        Task<List<StockItem>> GetAllAsync(IReadOnlyList<Guid>? warehouseIds, CancellationToken cancellationToken);
 
         Task<StockItem?> GetByWarehouseAndBatchIdAsync(
             Guid warehouseId, Guid productId, Guid batchId, CancellationToken cancellationToken);

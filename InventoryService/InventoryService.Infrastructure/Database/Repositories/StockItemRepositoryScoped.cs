@@ -12,9 +12,13 @@ namespace InventoryService.Infrastructure.Database.Repositories
     {
         protected override DbSet<StockItem> MainTable => DbContext.StockItems;
 
-        public Task<List<StockItem>> GetAllAsync(CancellationToken cancellationToken)
+        public Task<List<StockItem>> GetAllAsync(IReadOnlyList<Guid>? warehouseIds, CancellationToken cancellationToken)
         {
-            return MainTable.ToListAsync(cancellationToken);
+            var query = warehouseIds is null
+                ? MainTable
+                : MainTable.Where(StockItem.BelongsToWarehouses(warehouseIds));
+
+            return query.ToListAsync(cancellationToken);
         }
 
         public Task<StockItem?> GetByWarehouseAndBatchIdAsync(

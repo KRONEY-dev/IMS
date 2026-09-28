@@ -137,6 +137,7 @@ namespace InventoryService.Tests.Application.Services
         {
             var warehouseId = Guid.NewGuid();
             var order = CreateOrder(warehouseId);
+            SetActor(UserRole.Worker, warehouseIds: [warehouseId]);
 
             _supplierOrderRepositoryMock
                 .Setup(repo => repo.GetByIdAsync(order.Id, It.IsAny<CancellationToken>()))
@@ -154,6 +155,62 @@ namespace InventoryService.Tests.Application.Services
             Assert.Equal(order.Id, response.Id);
             Assert.Equal(warehouseId, response.WarehouseId);
             Assert.Equal(SupplierOrderStatus.Created, response.Status);
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_WorkerWithoutWarehouseAccess_ThrowsInsufficientPermissionsException()
+        {
+            var order = CreateOrder(Guid.NewGuid());
+            SetActor(UserRole.Worker, warehouseIds: [Guid.NewGuid()]);
+
+            _supplierOrderRepositoryMock
+                .Setup(repo => repo.GetByIdAsync(order.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(order);
+
+            var sut = CreateSut();
+
+            await Assert.ThrowsAsync<InsufficientPermissionsException>(() => sut.GetByIdAsync(
+                new SupplierOrderServiceDTOs.GetSupplierOrderByIdRequestDTO(order.Id), CancellationToken.None));
+        }
+
+        // ---- GetAllAsync ----
+
+        [Fact]
+        public async Task GetAllAsync_Worker_FiltersToOwnWarehouses()
+        {
+            var warehouseId = Guid.NewGuid();
+            SetActor(UserRole.Worker, warehouseIds: [warehouseId]);
+
+            _supplierOrderRepositoryMock
+                .Setup(repo => repo.GetAllAsync(It.IsAny<IReadOnlyList<Guid>?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync([]);
+
+            var sut = CreateSut();
+
+            await sut.GetAllAsync(new SupplierOrderServiceDTOs.GetAllSupplierOrdersRequestDTO(), CancellationToken.None);
+
+            _supplierOrderRepositoryMock.Verify(
+                repo => repo.GetAllAsync(
+                    It.Is<IReadOnlyList<Guid>?>(ids => ids != null && ids.SequenceEqual(new[] { warehouseId })),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task GetAllAsync_Manager_PassesNoWarehouseFilter()
+        {
+            SetActor(UserRole.Manager, warehouseIds: [Guid.NewGuid()]);
+
+            _supplierOrderRepositoryMock
+                .Setup(repo => repo.GetAllAsync(It.IsAny<IReadOnlyList<Guid>?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync([]);
+
+            var sut = CreateSut();
+
+            await sut.GetAllAsync(new SupplierOrderServiceDTOs.GetAllSupplierOrdersRequestDTO(), CancellationToken.None);
+
+            _supplierOrderRepositoryMock.Verify(
+                repo => repo.GetAllAsync(null, It.IsAny<CancellationToken>()), Times.Once);
         }
 
         // ---- SubmitAsync ----

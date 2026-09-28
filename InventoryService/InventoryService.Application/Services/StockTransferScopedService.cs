@@ -37,7 +37,7 @@ namespace InventoryService.Application.Services
         public async Task<StockTransferServiceDTOs.InitiateTransferResponseDTO> InitiateAsync(
             StockTransferServiceDTOs.InitiateTransferRequestDTO request, CancellationToken cancellationToken)
         {
-            RequestContext.EnsureMinimumRole(UserRole.Worker);
+            RequestContext.EnsureMinimumRole(UserRole.Manager);
 
             var shipmentId = Guid.NewGuid();
             var operations = new List<IDirectOperation>();
@@ -53,7 +53,7 @@ namespace InventoryService.Application.Services
                     throw new StockItemBatchMismatchException(sourceItem.Id, sourceItem.BatchId, line.BatchId);
                 }
 
-                RequestContext.EnsureWarehouseAccess(sourceItem.WarehouseId, UserRole.Manager);
+                RequestContext.EnsureWarehouseAccess(sourceItem.WarehouseId, UserRole.Admin);
 
                 var transfer = StockTransfer.Create(shipmentId, sourceItem.ProductId, sourceItem.WarehouseId,
                     request.DestinationWarehouseId, sourceItem.BatchId, line.Quantity, sourceItem.Price,
@@ -96,9 +96,10 @@ namespace InventoryService.Application.Services
             StockTransferServiceDTOs.GetShipmentByIdRequestDTO request, CancellationToken cancellationToken)
         {
             var transfers = await _stockTransferRepository.GetByShipmentIdAsync(request.ShipmentId, cancellationToken);
+            var accessibleTransfers = transfers.Where(HasTransferAccess).ToList();
 
             return new StockTransferServiceDTOs.GetShipmentByIdResponseDTO(
-                Mapper.Map<List<StockTransferServiceDTOs.StockTransferDTO>>(transfers));
+                Mapper.Map<List<StockTransferServiceDTOs.StockTransferDTO>>(accessibleTransfers));
         }
 
         public async Task<StockTransferServiceDTOs.StockTransferDTO> GetByIdAsync(
@@ -107,7 +108,30 @@ namespace InventoryService.Application.Services
             var transfer = await _stockTransferRepository.GetByIdAsync(request.StockTransferId, cancellationToken)
                 ?? throw new NotFoundException(nameof(StockTransfer), request.StockTransferId);
 
+            EnsureTransferAccess(transfer);
+
             return Mapper.Map<StockTransferServiceDTOs.StockTransferDTO>(transfer);
+        }
+
+        // A transfer spans two warehouses, so access follows either leg — a Worker assigned
+        // to just the source or just the destination still needs to see it.
+        private bool HasTransferAccess(StockTransfer transfer)
+        {
+            if (Convert.ToInt32(RequestContext.GetRole<UserRole>()) <= Convert.ToInt32(UserRole.Manager))
+            {
+                return true;
+            }
+
+            return RequestContext.WarehouseIds.Contains(transfer.SourceWarehouseId) ||
+                RequestContext.WarehouseIds.Contains(transfer.DestinationWarehouseId);
+        }
+
+        private void EnsureTransferAccess(StockTransfer transfer)
+        {
+            if (!HasTransferAccess(transfer))
+            {
+                throw new InsufficientPermissionsException();
+            }
         }
 
         public async Task<StockTransferServiceDTOs.ReceiveTransferResponseDTO> ReceiveAsync(
@@ -118,7 +142,7 @@ namespace InventoryService.Application.Services
             var transfer = await _stockTransferRepository.GetByIdAsync(request.StockTransferId, cancellationToken)
                 ?? throw new NotFoundException(nameof(StockTransfer), request.StockTransferId);
 
-            RequestContext.EnsureWarehouseAccess(transfer.DestinationWarehouseId, UserRole.Manager);
+            RequestContext.EnsureWarehouseAccess(transfer.DestinationWarehouseId, UserRole.Admin);
 
             if (request.Quantity > transfer.Quantity)
             {
@@ -183,7 +207,7 @@ namespace InventoryService.Application.Services
             var transfer = await _stockTransferRepository.GetByIdAsync(request.StockTransferId, cancellationToken)
                 ?? throw new NotFoundException(nameof(StockTransfer), request.StockTransferId);
 
-            RequestContext.EnsureWarehouseAccess(transfer.SourceWarehouseId, UserRole.Manager);
+            RequestContext.EnsureWarehouseAccess(transfer.SourceWarehouseId, UserRole.Admin);
 
             var performedByUserId = RequestContext.UserId;
 

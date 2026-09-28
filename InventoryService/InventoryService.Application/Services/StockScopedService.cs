@@ -125,7 +125,7 @@ namespace InventoryService.Application.Services
             StockServiceDTOs.ReceiveStockRequestDTO request, CancellationToken cancellationToken)
         {
             RequestContext.EnsureMinimumRole(UserRole.Worker);
-            RequestContext.EnsureWarehouseAccess(request.WarehouseId, UserRole.Manager);
+            RequestContext.EnsureWarehouseAccess(request.WarehouseId, UserRole.Admin);
 
             if (request.BatchId is { } batchId)
             {
@@ -191,7 +191,8 @@ namespace InventoryService.Application.Services
         public async Task<StockServiceDTOs.GetAllStockItemsResponseDTO> GetAllStockItemsAsync(
             StockServiceDTOs.GetAllStockItemsRequestDTO request, CancellationToken cancellationToken)
         {
-            var stockItems = await _stockItemRepository.GetAllAsync(cancellationToken);
+            var warehouseIds = RequestContext.GetAccessibleWarehouseIds(UserRole.Manager);
+            var stockItems = await _stockItemRepository.GetAllAsync(warehouseIds, cancellationToken);
 
             return new StockServiceDTOs.GetAllStockItemsResponseDTO(
                 Mapper.Map<List<StockServiceDTOs.StockItemDTO>>(stockItems));
@@ -202,6 +203,8 @@ namespace InventoryService.Application.Services
         {
             var stockItem = await _stockItemRepository.GetByIdAsync(request.StockItemId, cancellationToken)
                 ?? throw new NotFoundException(nameof(StockItem), request.StockItemId);
+
+            RequestContext.EnsureWarehouseAccess(stockItem.WarehouseId, UserRole.Manager);
 
             return Mapper.Map<StockServiceDTOs.StockItemDTO>(stockItem);
         }
@@ -225,6 +228,11 @@ namespace InventoryService.Application.Services
         public async Task<StockServiceDTOs.GetMovementsByStockItemIdResponseDTO> GetMovementsByStockItemIdAsync(
             StockServiceDTOs.GetMovementsByStockItemIdRequestDTO request, CancellationToken cancellationToken)
         {
+            var stockItem = await _stockItemRepository.GetByIdAsync(request.StockItemId, cancellationToken)
+                ?? throw new NotFoundException(nameof(StockItem), request.StockItemId);
+
+            RequestContext.EnsureWarehouseAccess(stockItem.WarehouseId, UserRole.Manager);
+
             var movements = await _stockMovementRepository.GetByStockItemIdAsync(request.StockItemId, cancellationToken);
 
             return new StockServiceDTOs.GetMovementsByStockItemIdResponseDTO(
@@ -239,7 +247,7 @@ namespace InventoryService.Application.Services
             var stockItem = await _stockItemRepository.GetByIdAsync(stockItemId, cancellationToken)
                 ?? throw new NotFoundException(nameof(StockItem), stockItemId);
 
-            RequestContext.EnsureWarehouseAccess(stockItem.WarehouseId, UserRole.Manager);
+            RequestContext.EnsureWarehouseAccess(stockItem.WarehouseId, UserRole.Admin);
 
             var movement = StockMovement.Create(stockItem.Id, stockItem.ProductId, stockItem.WarehouseId,
                 stockItem.BatchId, stockItem.Price, type, quantity, reference: null,

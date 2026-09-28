@@ -33,6 +33,17 @@ namespace Shared.Kernel.Requests
             }
         }
 
+        public static IReadOnlyList<Guid>? GetAccessibleWarehouseIds<TRole>(this IRequestContext context, TRole bypassAtOrAbove)
+            where TRole : struct, Enum
+        {
+            if (Convert.ToInt32(context.GetRole<TRole>()) <= Convert.ToInt32(bypassAtOrAbove))
+            {
+                return null;
+            }
+
+            return context.WarehouseIds;
+        }
+
         public static void EnsureMinimumRoleOrSelf<TRole>(this IRequestContext context, Guid targetUserId, TRole minimumRole)
             where TRole : struct, Enum
         {

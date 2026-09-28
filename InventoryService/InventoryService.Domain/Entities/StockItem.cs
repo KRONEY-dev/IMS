@@ -48,6 +48,11 @@ namespace InventoryService.Domain.Entities
             return stockItem => stockItem.Id == stockItemId;
         }
 
+        public static Expression<Func<StockItem, bool>> BelongsToWarehouses(IReadOnlyList<Guid> warehouseIds)
+        {
+            return stockItem => warehouseIds.Contains(stockItem.WarehouseId);
+        }
+
         private static void EnsureNonNegativeOrZero(string fieldName, decimal value)
         {
             if (value <= 0)

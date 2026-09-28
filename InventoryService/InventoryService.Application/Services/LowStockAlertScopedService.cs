@@ -33,7 +33,8 @@ namespace InventoryService.Application.Services
         public async Task<LowStockAlertServiceDTOs.GetAllLowStockAlertsResponseDTO> GetAllAsync(
             LowStockAlertServiceDTOs.GetAllLowStockAlertsRequestDTO request, CancellationToken cancellationToken)
         {
-            var alerts = await _lowStockAlertRepository.GetAllAsync(cancellationToken);
+            var warehouseIds = RequestContext.GetAccessibleWarehouseIds(UserRole.Manager);
+            var alerts = await _lowStockAlertRepository.GetAllAsync(warehouseIds, cancellationToken);
 
             return new LowStockAlertServiceDTOs.GetAllLowStockAlertsResponseDTO(
                 Mapper.Map<List<LowStockAlertServiceDTOs.LowStockAlertDTO>>(alerts));
@@ -44,6 +45,8 @@ namespace InventoryService.Application.Services
         {
             var alert = await _lowStockAlertRepository.GetByIdAsync(request.LowStockAlertId, cancellationToken)
                 ?? throw new NotFoundException(nameof(LowStockAlert), request.LowStockAlertId);
+
+            RequestContext.EnsureWarehouseAccess(alert.WarehouseId, UserRole.Manager);
 
             return Mapper.Map<LowStockAlertServiceDTOs.LowStockAlertDTO>(alert);
         }
