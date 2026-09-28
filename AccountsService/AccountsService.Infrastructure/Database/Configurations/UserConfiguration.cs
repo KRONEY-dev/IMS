@@ -27,6 +27,9 @@ namespace AccountsService.Infrastructure.Database.Configurations
             builder.Property(u => u.PhoneNumber)
                 .HasMaxLength(20);
 
+            builder.HasIndex(u => u.PhoneNumber)
+                .IsUnique();
+
             builder.Property(u => u.WarehouseIds)
                .HasColumnType("uuid[]");
 

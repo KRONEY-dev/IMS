@@ -31,6 +31,7 @@ namespace ApiGateway.Authentication
                         ValidIssuer = settings.Issuer,
                         ValidAudience = settings.Audience,
                         IssuerSigningKey = new RsaSecurityKey(rsa),
+                        ValidAlgorithms = [SecurityAlgorithms.RsaSha256],
                         ValidateIssuer = true,
                         ValidateAudience = true,
                         ValidateLifetime = true,

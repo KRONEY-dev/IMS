@@ -19,6 +19,20 @@ namespace AccountsService.Infrastructure.Database.Repositories
                 setters => setters.SetProperty(rt => rt.RevokedAt, DateTime.UtcNow));
         }
 
+        public IDirectOperation BuildRotateOperation(Guid tokenId, Guid replacedByTokenId)
+        {
+            return new DirectUpdate<RefreshToken>(
+                RefreshToken.IsActiveToken(tokenId),
+                setters => setters
+                    .SetProperty(rt => rt.RevokedAt, DateTime.UtcNow)
+                    .SetProperty(rt => rt.ReplacedByTokenId, replacedByTokenId));
+        }
+
+        public IDirectOperation BuildCreateOperation(RefreshToken token)
+        {
+            return new DirectInsert<RefreshToken>(token);
+        }
+
         public IDirectOperation BuildDeleteDeadOlderThanOperation(DateTime cutoff)
         {
             return new DirectDelete<RefreshToken>(RefreshToken.IsDeadOlderThan(cutoff));

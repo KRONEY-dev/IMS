@@ -8,6 +8,10 @@ namespace AccountsService.Application.Repositories.Interfaces
     {
         IDirectOperation RevokeChainBySessionId(Guid sessionId);
 
+        IDirectOperation BuildRotateOperation(Guid tokenId, Guid replacedByTokenId);
+
+        IDirectOperation BuildCreateOperation(RefreshToken token);
+
         IDirectOperation BuildDeleteDeadOlderThanOperation(DateTime cutoff);
     }
 }

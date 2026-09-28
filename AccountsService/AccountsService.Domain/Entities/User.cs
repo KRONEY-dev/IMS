@@ -34,8 +34,8 @@ namespace AccountsService.Domain.Entities
             FirstName = firstName;
             LastName = lastName;
 
-            Email = email;
-            PhoneNumber = phoneNumber;
+            Email = NormalizeEmail(email);
+            PhoneNumber = phoneNumber?.Trim();
 
             Role = role;
 
@@ -69,12 +69,17 @@ namespace AccountsService.Domain.Entities
 
         public void ChangeEmail(string? newEmail)
         {
-            Email = newEmail;
+            Email = NormalizeEmail(newEmail);
         }
 
         public void ChangePhoneNumber(string? newPhoneNumber)
         {
-            PhoneNumber = newPhoneNumber;
+            PhoneNumber = newPhoneNumber?.Trim();
+        }
+
+        private static string? NormalizeEmail(string? email)
+        {
+            return email?.Trim().ToLowerInvariant();
         }
     }
 }

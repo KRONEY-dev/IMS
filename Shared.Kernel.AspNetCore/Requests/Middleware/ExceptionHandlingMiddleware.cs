@@ -30,6 +30,7 @@ namespace Shared.Kernel.AspNetCore.Requests.Middleware
             {
                 var statusCode = ex switch
                 {
+                    InvalidAuthenticationContextException => HttpStatusCode.Unauthorized,
                     InsufficientPermissionsException => HttpStatusCode.Forbidden,
                     NotFoundException => HttpStatusCode.NotFound,
                     ReferencedEntityInUseException => HttpStatusCode.Conflict,

@@ -111,6 +111,8 @@ namespace AccountsService.Application.Services
             user.SetRole(request.NewRole);
             await UnitOfWork.SaveChangesAsync(cancellationToken);
 
+            await _userAccessChangeNotifier.NotifyAccessRevokedAsync(request.TargetUserId, cancellationToken);
+
             return new UserServiceDTOs.ChangeRoleResponseDTO();
         }
 

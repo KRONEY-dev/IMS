@@ -10,6 +10,7 @@ namespace AccountsService.Application.Validators
             RuleFor(x => x.FirstName).NotEmpty();
             RuleFor(x => x.LastName).NotEmpty();
             RuleFor(x => x.PhoneNumber).NotEmpty().When(x => string.IsNullOrEmpty(x.Email));
+            RuleFor(x => x.PhoneNumber).Matches(@"^\+?[1-9]\d{7,14}$").When(x => !string.IsNullOrEmpty(x.PhoneNumber));
             RuleFor(x => x.Email).NotEmpty().EmailAddress().When(x => string.IsNullOrEmpty(x.PhoneNumber));
             RuleFor(x => x.Password).NotEmpty().MinimumLength(8);
             RuleFor(x => x.Role).IsInEnum();

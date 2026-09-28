@@ -26,6 +26,12 @@ namespace AccountsService.Application.Services
 
         private readonly JwtSettings _jwtSettings;
 
+        // Lazily computed once and reused - a fixed hash to verify against when no user was
+        // found, so a login attempt for a non-existent account costs the same real PBKDF2
+        // verification as a wrong-password attempt, instead of returning instantly and
+        // letting response time reveal whether the account exists.
+        private static string? _dummyPasswordHash;
+
         public AuthScopedService(IUnitOfWork unitOfWork, IRequestContext requestContext, IMapperWrapper mapper,
             IRefreshTokenRepository refreshTokenRepository, IUserRepository userRepository,
             ITokenSignerService tokenSignerService, IPasswordHasherService passwordHasherService,
@@ -56,7 +62,15 @@ namespace AccountsService.Application.Services
                 user = await _userRepository.GetByPhoneNumberAsync(request.PhoneNumber, cancellationToken);
             }
 
-            if (user is null || !_passwordHasherService.Verify(user.PasswordHash, request.Password))
+            if (user is null)
+            {
+                _dummyPasswordHash ??= _passwordHasherService.Hash(Guid.NewGuid().ToString());
+                _passwordHasherService.Verify(_dummyPasswordHash, request.Password);
+
+                throw new InvalidCredentialsException();
+            }
+
+            if (!_passwordHasherService.Verify(user.PasswordHash, request.Password))
             {
                 throw new InvalidCredentialsException();
             }
@@ -110,10 +124,25 @@ namespace AccountsService.Application.Services
             var tokenData = GenerateTokens(user, token.SessionId);
             var newRefreshToken = tokenData.RefreshToken;
 
-            token.MarkRevoked(newRefreshToken.Id);
-            _refreshTokenRepository.Add(newRefreshToken);
+            var rotateOperations = new List<IDirectOperation>
+            {
+                _refreshTokenRepository.BuildRotateOperation(token.Id, newRefreshToken.Id),
+                _refreshTokenRepository.BuildCreateOperation(newRefreshToken)
+            };
 
-            await UnitOfWork.SaveChangesAsync(cancellationToken);
+            var rotated = await UnitOfWork.ExecuteInTransactionAsync(rotateOperations, cancellationToken);
+
+            if (!rotated)
+            {
+                // Another request rotated this exact token in the moment between our read and
+                // our write - two requests racing a single still-valid token is itself the
+                // reuse signature, so the whole session chain (including whichever request won
+                // the race) is treated as compromised, same as reuse detected past the grace period.
+                var tokensRevokeOperation = _refreshTokenRepository.RevokeChainBySessionId(token.SessionId);
+                await UnitOfWork.ExecuteInTransactionAsync(tokensRevokeOperation, cancellationToken);
+
+                throw new RefreshTokenReuseDetectedException(token.SessionId);
+            }
 
             return new AuthServiceDTOs.RefreshAccessTokenResponseDTO(tokenData.AccessToken,
                 new AuthServiceDTOs.RefreshTokenDTO(newRefreshToken.Id, tokenData.RawSecret));

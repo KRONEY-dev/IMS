@@ -13,22 +13,30 @@ namespace AccountsService.Infrastructure.Database.Repositories
 
         public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken)
         {
-            return MainTable.FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
+            var normalized = email.Trim().ToLowerInvariant();
+
+            return MainTable.FirstOrDefaultAsync(u => u.Email == normalized, cancellationToken);
         }
 
         public Task<bool> ExistsByEmailAsync(string email, CancellationToken cancellationToken)
         {
-            return MainTable.AnyAsync(u => u.Email == email, cancellationToken);
+            var normalized = email.Trim().ToLowerInvariant();
+
+            return MainTable.AnyAsync(u => u.Email == normalized, cancellationToken);
         }
 
         public Task<User?> GetByPhoneNumberAsync(string phoneNumber, CancellationToken cancellationToken)
         {
-            return MainTable.FirstOrDefaultAsync(u => u.PhoneNumber == phoneNumber, cancellationToken);
+            var normalized = phoneNumber.Trim();
+
+            return MainTable.FirstOrDefaultAsync(u => u.PhoneNumber == normalized, cancellationToken);
         }
 
         public Task<bool> ExistsByPhoneNumberAsync(string phoneNumber, CancellationToken cancellationToken)
         {
-            return MainTable.AnyAsync(u => u.PhoneNumber == phoneNumber, cancellationToken);
+            var normalized = phoneNumber.Trim();
+
+            return MainTable.AnyAsync(u => u.PhoneNumber == normalized, cancellationToken);
         }
     }
 }
