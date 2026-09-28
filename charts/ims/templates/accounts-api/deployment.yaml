@@ -66,6 +66,10 @@ spec:
               subPath: accounts-private.pem
           ports:
             - containerPort: {{ .Values.accountsApi.port }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
           readinessProbe:
             httpGet:
               path: /health/ready

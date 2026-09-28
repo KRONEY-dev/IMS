@@ -25,6 +25,8 @@ spec:
           ports:
             - containerPort: {{ .Values.rabbitmq.amqpPort }}
             - containerPort: {{ .Values.rabbitmq.managementPort }}
+          resources:
+            {{- toYaml .Values.rabbitmq.resources | nindent 12 }}
           volumeMounts:
             - name: data
               mountPath: /var/lib/rabbitmq

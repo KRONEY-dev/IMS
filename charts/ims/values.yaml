@@ -8,6 +8,13 @@ accountsDb:
   port: 5432
   storage:
     size: 1Gi
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 400Mi
 
 inventoryDb:
   image:
@@ -19,6 +26,13 @@ inventoryDb:
   port: 5432
   storage:
     size: 1Gi
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 400Mi
 
 rabbitmq:
   image:
@@ -29,6 +43,13 @@ rabbitmq:
   managementPort: 15672
   storage:
     size: 1Gi
+  resources:
+    requests:
+      cpu: 300m
+      memory: 150Mi
+    limits:
+      cpu: 600m
+      memory: 300Mi
 
 redis:
   image:
@@ -38,6 +59,13 @@ redis:
   port: 6379
   storage:
     size: 1Gi
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
 
 accountsApi:
   image:

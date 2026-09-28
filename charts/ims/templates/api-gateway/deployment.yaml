@@ -45,6 +45,10 @@ spec:
               subPath: accounts-public.pem
           ports:
             - containerPort: {{ .Values.apiGateway.port }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
           readinessProbe:
             httpGet:
               path: /health/ready

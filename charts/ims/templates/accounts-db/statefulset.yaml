@@ -31,6 +31,8 @@ spec:
                   key: password
           ports:
             - containerPort: {{ .Values.accountsDb.port }}
+          resources:
+            {{- toYaml .Values.accountsDb.resources | nindent 12 }}
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data

@@ -68,6 +68,10 @@ spec:
             {{- toYaml .Values.inventoryApi.resources | nindent 12 }}
           ports:
             - containerPort: {{ .Values.inventoryApi.port }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
           readinessProbe:
             httpGet:
               path: /health/ready
