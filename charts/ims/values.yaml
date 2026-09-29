@@ -48,7 +48,6 @@ rabbitmq:
       cpu: 400m
       memory: 150Mi
     limits:
-      cpu: 900m
       memory: 300Mi
 
 redis:

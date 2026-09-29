@@ -267,13 +267,13 @@ jobs:
       - name: Create JWT keys secret
         run: dotnet run scripts/k8s-create-jwt-secret.cs --namespace ims
 
-      - name: Materialize chart secrets from GitHub Actions Secrets
+      - name: Generate throwaway DB passwords for this ephemeral cluster
         run: |
           cat <<EOF > charts/ims/values-secrets.yaml
           accountsDb:
-            password: "${{ secrets.CI_ACCOUNTS_DB_PASSWORD }}"
+            password: "$(openssl rand -base64 24)"
           inventoryDb:
-            password: "${{ secrets.CI_INVENTORY_DB_PASSWORD }}"
+            password: "$(openssl rand -base64 24)"
           EOF
 
       - name: Deploy the Helm chart
