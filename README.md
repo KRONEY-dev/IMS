@@ -16,7 +16,7 @@ The `main` branch deploys automatically to a live single-node Kubernetes cluster
 |---|---|
 | API health check | [ims-main.duckdns.org/health/ready](https://ims-main.duckdns.org/health/ready) |
 | Grafana dashboards | [ims-grafana.duckdns.org](https://ims-grafana.duckdns.org) |
-| Interactive API docs (Scalar) | `/scalar` — a single hub covering Accounts, Inventory, and the Gateway's own admin API; IP-allowlisted, not publicly browsable (current demo instance only) |
+| Interactive API docs (Scalar) | [ims-main.duckdns.org/scalar](https://ims-main.duckdns.org/scalar) IP-allowlisted, not publicly browsable (current demo instance only) |
 
 The docs allowlist is enforced independently of JWT auth, since a live "try it" API surface is a map of the whole system for anyone who reaches it — see [Security highlights](#security-highlights) below. The demo instance currently restricts it to a small set of networks; that's a configuration choice for this instance, not a limitation of the feature itself.
 
