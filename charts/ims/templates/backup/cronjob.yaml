@@ -1,0 +1,77 @@
+{{- if .Values.backup.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Release.Name }}-db-backup
+  labels:
+    {{- include "ims.componentLabels" (dict "context" $ "component" "backup") | nindent 4 }}
+spec:
+  schedule: {{ .Values.backup.schedule | quote }}
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            {{- include "ims.componentLabels" (dict "context" $ "component" "backup") | nindent 12 }}
+        spec:
+          restartPolicy: OnFailure
+          initContainers:
+            - name: dump-accounts
+              image: "postgres:17"
+              command:
+                - sh
+                - -c
+                - set -o pipefail; pg_dump -h {{ .Release.Name }}-accounts-db -U {{ .Values.accountsDb.username }} -d {{ .Values.accountsDb.database }} | gzip > /backup/accounts-$(date +%Y%m%d-%H%M%S).sql.gz
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Release.Name }}-accounts-db
+                      key: password
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
+            - name: dump-inventory
+              image: "postgres:17"
+              command:
+                - sh
+                - -c
+                - set -o pipefail; pg_dump -h {{ .Release.Name }}-inventory-db -U {{ .Values.inventoryDb.username }} -d {{ .Values.inventoryDb.database }} | gzip > /backup/inventory-$(date +%Y%m%d-%H%M%S).sql.gz
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Release.Name }}-inventory-db
+                      key: password
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
+          containers:
+            - name: upload
+              image: "amazon/aws-cli:2.37.5"
+              command:
+                - sh
+                - -c
+                - aws s3 cp /backup/ s3://{{ .Values.backup.bucket }}/ --recursive --endpoint-url {{ .Values.backup.endpointUrl }}
+              env:
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Release.Name }}-backup
+                      key: accessKey
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Release.Name }}-backup
+                      key: secretKey
+                - name: AWS_DEFAULT_REGION
+                  value: {{ .Values.backup.region | quote }}
+                - name: AWS_REQUEST_CHECKSUM_CALCULATION
+                  value: when_required
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
+          volumes:
+            - name: backup
+              emptyDir: {}
+{{- end }}

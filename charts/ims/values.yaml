@@ -136,6 +136,10 @@ apiGateway:
     maxReplicas: 5
     targetCPUUtilizationPercentage: 70
 
+backup:
+  enabled: false
+  schedule: "0 3 * * *"
+
 ingress:
   host: ims.local
 

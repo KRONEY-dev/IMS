@@ -149,6 +149,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      security-events: write
     strategy:
       matrix:
         include:
@@ -198,6 +199,21 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.cache-scope }}-amd64
           cache-to: type=gha,mode=max,scope=${{ matrix.cache-scope }}-amd64
 
+      - name: Scan ${{ matrix.image }} for vulnerabilities
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ghcr.io/kroney-dev/${{ matrix.image }}:sha-${{ github.sha }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          exit-code: '0'
+
+      - name: Upload scan results to the Security tab
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-results.sarif
+          category: ${{ matrix.image }}
+
   helm-deploy-smoke-test:
     runs-on: ubuntu-latest
     needs: [build-and-test, build-images]
@@ -243,8 +259,13 @@ jobs:
           kind load docker-image ims-accounts-api:latest ims-accounts-migrate:latest \
             ims-inventory-api:latest ims-inventory-migrate:latest ims-api-gateway:latest
 
+      - name: Create the ims namespace
+        run: |
+          kubectl create namespace ims --dry-run=client -o yaml | kubectl apply -f -
+          kubectl config set-context --current --namespace=ims
+
       - name: Create JWT keys secret
-        run: dotnet run scripts/k8s-create-jwt-secret.cs
+        run: dotnet run scripts/k8s-create-jwt-secret.cs --namespace ims
 
       - name: Materialize chart secrets from GitHub Actions Secrets
         run: |
@@ -256,7 +277,7 @@ jobs:
           EOF
 
       - name: Deploy the Helm chart
-        run: helm upgrade --install ims charts/ims -f charts/ims/values-secrets.yaml --wait --timeout 5m
+        run: helm upgrade --install ims charts/ims --namespace ims -f charts/ims/values-secrets.yaml --wait --timeout 5m
 
       - name: Show pod status
         if: always()
@@ -396,7 +417,7 @@ jobs:
             cd ~/IMS
             git fetch origin
             git reset --hard origin/main
-            helm upgrade --install ims charts/ims -f charts/ims/values-oracle.yaml -f charts/ims/values-secrets.yaml \
+            helm upgrade --install ims charts/ims --namespace ims -f charts/ims/values-oracle.yaml -f charts/ims/values-secrets.yaml \
               --set accountsApi.image.tag=sha-${{ github.sha }} \
               --set accountsApi.migrationImage.tag=sha-${{ github.sha }} \
               --set inventoryApi.image.tag=sha-${{ github.sha }} \
@@ -416,7 +437,7 @@ jobs:
         run: |
           ssh -i ~/.ssh/oracle_key ubuntu@${{ secrets.ORACLE_HOST }} '
             export KUBECONFIG=~/.kube/config
-            helm rollback ims --wait --timeout 5m
+            helm rollback ims --namespace ims --wait --timeout 5m
           '
           sleep 5
           rollback_code=$(curl -s -o /dev/null -w "%{http_code}" https://ims-main.duckdns.org/health/ready)

@@ -6,6 +6,19 @@ prometheus:
   prometheusSpec:
     serviceMonitorSelectorNilUsesHelmValues: false
 
+kubeControllerManager:
+  endpoints: ["10.0.0.197"]
+kubeScheduler:
+  endpoints: ["10.0.0.197"]
+kubeProxy:
+  endpoints: ["10.0.0.197"]
+kubeEtcd:
+  enabled: false
+
+defaultRules:
+  rules:
+    etcd: false
+
 grafana:
   ingress:
     enabled: true

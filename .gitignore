@@ -24,6 +24,7 @@ obj/
 
 # Real secret values for the Helm chart — must never be committed
 charts/ims/values-secrets.yaml
+charts/monitoring/kube-prometheus-stack-values-secrets.yaml
 
 docker-compose.override.yml
 

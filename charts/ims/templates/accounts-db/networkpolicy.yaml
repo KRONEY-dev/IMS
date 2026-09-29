@@ -15,6 +15,9 @@ spec:
         - podSelector:
             matchLabels:
               {{- include "ims.selectorLabels" (dict "context" $ "component" "accounts-api") | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "ims.selectorLabels" (dict "context" $ "component" "backup") | nindent 14 }}
       ports:
         - protocol: TCP
           port: {{ .Values.accountsDb.port }}

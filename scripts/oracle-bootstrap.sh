@@ -34,9 +34,14 @@ set -euo pipefail
 REPO_URL="https://github.com/KRONEY-dev/IMS.git"
 REPO_DIR="$HOME/IMS"
 
+NODE_IP="$(ip route get 1.1.1.1 | awk '{print $7; exit}')"
+
 echo "==> Installing k3s"
 if ! command -v k3s >/dev/null 2>&1; then
-  curl -sfL https://get.k3s.io | sh -s - --disable traefik --write-kubeconfig-mode 644
+  curl -sfL https://get.k3s.io | sh -s - --disable traefik --write-kubeconfig-mode 644 \
+    --kube-controller-manager-arg "bind-address=$NODE_IP" \
+    --kube-scheduler-arg "bind-address=$NODE_IP" \
+    --kube-proxy-arg "metrics-bind-address=$NODE_IP:10249"
 else
   echo "already installed, skipping"
 fi
@@ -56,6 +61,10 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get install -y iptables-persistent
 for port in 80 443 22; do
   sudo iptables -C INPUT -p tcp --dport "$port" -m state --state NEW -j ACCEPT 2>/dev/null || \
     sudo iptables -I INPUT -p tcp --dport "$port" -m state --state NEW -j ACCEPT
+done
+for port in 10257 10259 10249; do
+  sudo iptables -C INPUT -p tcp -s 10.42.0.0/16 --dport "$port" -j ACCEPT 2>/dev/null || \
+    sudo iptables -I INPUT -p tcp -s 10.42.0.0/16 --dport "$port" -j ACCEPT
 done
 sudo netfilter-persistent save
 
@@ -98,15 +107,29 @@ helm upgrade --install cert-manager jetstack/cert-manager \
 echo "==> Applying the Let's Encrypt ClusterIssuer"
 kubectl apply -f charts/cloud/letsencrypt-clusterissuer.yaml
 
+if [ ! -f charts/monitoring/kube-prometheus-stack-values-secrets.yaml ]; then
+  echo "==> charts/monitoring/kube-prometheus-stack-values-secrets.yaml is missing"
+  echo "    Copy charts/monitoring/kube-prometheus-stack-values-secrets.example.yaml,"
+  echo "    fill in real SMTP values, then re-run this script."
+  exit 1
+fi
+
 echo "==> Installing kube-prometheus-stack (Prometheus + Grafana)"
 helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
   --version 91.5.1 \
   --namespace monitoring --create-namespace \
   -f charts/monitoring/kube-prometheus-stack-values-oracle.yaml \
+  -f charts/monitoring/kube-prometheus-stack-values-secrets.yaml \
+  --set kubeControllerManager.endpoints[0]="$NODE_IP" \
+  --set kubeScheduler.endpoints[0]="$NODE_IP" \
+  --set kubeProxy.endpoints[0]="$NODE_IP" \
   --wait --timeout 5m
 
 echo "==> Applying the Grafana TLS certificate"
 kubectl apply -f charts/monitoring/grafana-certificate-oracle.yaml
+
+echo "==> Creating the ims namespace"
+kubectl create namespace ims --dry-run=client -o yaml | kubectl apply -f -
 
 echo "==> Generating JWT signing keys"
 mkdir -p AccountsService/AccountsService.API/Keys ApiGateway/Keys
@@ -118,7 +141,7 @@ fi
 kubectl create secret generic ims-jwt-keys \
   --from-file=accounts-private.pem=AccountsService/AccountsService.API/Keys/accounts-private.pem \
   --from-file=accounts-public.pem=ApiGateway/Keys/accounts-public.pem \
-  --dry-run=client -o yaml | kubectl apply -f -
+  -n ims --dry-run=client -o yaml | kubectl apply -f -
 
 echo "==> Generating database secrets"
 if [ ! -f charts/ims/values-secrets.yaml ]; then
@@ -127,12 +150,24 @@ accountsDb:
   password: "$(openssl rand -base64 24)"
 inventoryDb:
   password: "$(openssl rand -base64 24)"
+
+backup:
+  accessKey: CHANGE_ME
+  secretKey: CHANGE_ME
 EOF
   chmod 600 charts/ims/values-secrets.yaml
 fi
 
+if grep -q "CHANGE_ME" charts/ims/values-secrets.yaml; then
+  echo "==> charts/ims/values-secrets.yaml still has placeholder backup credentials"
+  echo "    Create an Object Storage bucket + Customer Secret Key in the OCI console,"
+  echo "    fill in backup.accessKey/backup.secretKey, then re-run this script."
+  exit 1
+fi
+
 echo "==> Deploying the IMS Helm chart"
 helm upgrade --install ims charts/ims \
+  --namespace ims --create-namespace \
   -f charts/ims/values-oracle.yaml -f charts/ims/values-secrets.yaml \
   --wait --timeout 5m
 

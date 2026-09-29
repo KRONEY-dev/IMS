@@ -8,8 +8,23 @@ using System.Runtime.CompilerServices;
 
 var repoRoot = GetRepoRoot();
 
-var privateKeyPath = args.Length > 0 ? args[0] : Path.Combine(repoRoot, "AccountsService", "AccountsService.API", "Keys", "accounts-private.pem");
-var publicKeyPath = args.Length > 1 ? args[1] : Path.Combine(repoRoot, "ApiGateway", "Keys", "accounts-public.pem");
+var positional = new List<string>();
+var @namespace = "ims";
+
+for (var i = 0; i < args.Length; i++)
+{
+    if (args[i] == "--namespace" && i + 1 < args.Length)
+    {
+        @namespace = args[++i];
+    }
+    else
+    {
+        positional.Add(args[i]);
+    }
+}
+
+var privateKeyPath = positional.Count > 0 ? positional[0] : Path.Combine(repoRoot, "AccountsService", "AccountsService.API", "Keys", "accounts-private.pem");
+var publicKeyPath = positional.Count > 1 ? positional[1] : Path.Combine(repoRoot, "ApiGateway", "Keys", "accounts-public.pem");
 
 if (!File.Exists(privateKeyPath))
 {
@@ -26,11 +41,12 @@ var manifest = RunProcessCapture("kubectl",
     "create", "secret", "generic", "ims-jwt-keys",
     $"--from-file=accounts-private.pem={privateKeyPath}",
     $"--from-file=accounts-public.pem={publicKeyPath}",
+    "-n", @namespace,
     "--dry-run=client",
     "-o", "yaml"
 ]);
 
-RunProcessWithInput("kubectl", ["apply", "-f", "-"], manifest);
+RunProcessWithInput("kubectl", ["apply", "-n", @namespace, "-f", "-"], manifest);
 
 static string GetRepoRoot([CallerFilePath] string path = "")
 {
