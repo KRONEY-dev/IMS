@@ -1,6 +1,7 @@
 using ApiGateway.Authentication;
 using ApiGateway.Authorization;
 using ApiGateway.Endpoints;
+using ApiGateway.Exceptions;
 using ApiGateway.Options;
 using ApiGateway.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -9,6 +10,7 @@ using Prometheus;
 using Shared.Kernel.AspNetCore.HealthChecks;
 using Shared.Kernel.AspNetCore.OpenApi;
 using Shared.Kernel.AspNetCore.Requests.Middleware;
+using Shared.Kernel.Exceptions;
 using Shared.Kernel.Extensions;
 using Shared.Kernel.Redis;
 using StackExchange.Redis;
@@ -37,6 +39,8 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
         }
     }
 });
+
+builder.Services.AddSingleton<IExceptionMapperService, GatewayExceptionMapperSingletonService>();
 
 builder.Services.AddRedisAccessTokenBlacklist(configuration);
 builder.Services.AddRedisRateLimiter(configuration);
