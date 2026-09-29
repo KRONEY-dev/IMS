@@ -31,6 +31,10 @@ apiGateway:
   # than the node's real IP — confirmed live from the Gateway's own blocked-
   # access log, not assumed. k3s's pod network is 10.42.0.0/16.
   forwardedHeadersTrustedNetwork: "10.42.0.0/16"
+  # Demo instance: docs are meant to be publicly browsable here, so the IP
+  # allowlist check is switched off entirely rather than populated with "any IP".
+  docsAccessSettings:
+    requireIpAllowlist: false
 
 backup:
   enabled: true

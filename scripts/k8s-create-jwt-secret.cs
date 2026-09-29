@@ -1,8 +1,3 @@
-// Creates or updates the Kubernetes Secret holding the RS256 JWT signing/verification
-// keys, directly from the existing local key files - kept out of the Helm chart itself
-// so the same key files docker-compose already uses stay the single source of truth.
-// Uses "create --dry-run=client -o yaml | apply" so re-running is safe (idempotent),
-// unlike a plain "kubectl create secret" which fails once the secret already exists.
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 

@@ -5,34 +5,46 @@ using Yarp.ReverseProxy.Model;
 
 namespace ApiGateway.RateLimiting
 {
-    public class LoginRateLimitingMiddleware(RequestDelegate next, IRateLimiter rateLimiter,
-        IOptions<RateLimitingSettings> settings, ILogger<LoginRateLimitingMiddleware> logger)
+    public class LoginRateLimitingMiddleware
     {
+        private readonly RequestDelegate _next;
+        private readonly IRateLimiter _rateLimiter;
+        private readonly RateLimitingSettings _settings;
+        private readonly ILogger<LoginRateLimitingMiddleware> _logger;
+
+        public LoginRateLimitingMiddleware(RequestDelegate next, IRateLimiter rateLimiter,
+            IOptions<RateLimitingSettings> settings, ILogger<LoginRateLimitingMiddleware> logger)
+        {
+            _next = next;
+            _rateLimiter = rateLimiter;
+            _settings = settings.Value;
+            _logger = logger;
+        }
+
         public async Task InvokeAsync(HttpContext context)
         {
             var routeConfig = context.GetEndpoint()?.Metadata.GetMetadata<RouteModel>()?.Config;
 
             if (routeConfig?.Metadata is null || !routeConfig.Metadata.ContainsKey(RateLimitingRouteMetadata.RateLimitedKey))
             {
-                await next(context);
+                await _next(context);
                 return;
             }
 
             var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
             var key = $"{routeConfig.RouteId}:{clientIp}";
 
-            var settingsValue = settings.Value;
-            var allowed = await rateLimiter.TryAcquireAsync(
-                key, settingsValue.Limit, TimeSpan.FromSeconds(settingsValue.WindowSeconds), context.RequestAborted);
+            var allowed = await _rateLimiter.TryAcquireAsync(
+                key, _settings.Limit, TimeSpan.FromSeconds(_settings.WindowSeconds), context.RequestAborted);
 
             if (!allowed)
             {
-                logger.LogWarning("Rate limit exceeded for {RouteId} from {ClientIp}", routeConfig.RouteId, clientIp);
+                _logger.LogWarning("Rate limit exceeded for {RouteId} from {ClientIp}", routeConfig.RouteId, clientIp);
                 context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
                 return;
             }
 
-            await next(context);
+            await _next(context);
         }
     }
 }

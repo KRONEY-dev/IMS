@@ -4,10 +4,6 @@ using Xunit;
 
 namespace InventoryService.Tests.Integration.Fixtures
 {
-    // Real RabbitMQ (matches docker-compose.yml's rabbitmq:4-management-alpine image), one
-    // container shared across the "Integration" collection. Exposes the mapped host/port so
-    // tests can point RabbitMqSettings at it, plus a raw connection for asserting queue
-    // contents directly, independent of the production publisher/consumer code under test.
     public class RabbitMqContainerFixture : IAsyncLifetime
     {
         private RabbitMqContainer _container = default!;

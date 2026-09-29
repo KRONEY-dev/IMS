@@ -2,8 +2,6 @@ using Microsoft.Extensions.Logging;
 
 namespace InventoryService.Tests.Integration.Fixtures
 {
-    // Captures fully-formatted log messages so a job's only observable output (a log line)
-    // can be asserted on, without changing the job to return a result just for testing.
     public class CapturingLogger<T> : ILogger<T>
     {
         public List<string> Messages { get; } = [];

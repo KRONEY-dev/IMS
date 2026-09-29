@@ -61,7 +61,6 @@ namespace InventoryService.Infrastructure.Messaging
 
                 if (handler is null)
                 {
-                    // Unknown NameKey is a permanent failure (no future retry will make a handler appear) — dead-letter, not requeue.
                     await _channel!.BasicNackAsync(eventArgs.DeliveryTag, multiple: false, requeue: false);
                     return;
                 }

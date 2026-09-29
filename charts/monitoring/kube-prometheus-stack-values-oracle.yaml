@@ -29,3 +29,10 @@ grafana:
       - secretName: grafana-tls
         hosts:
           - ims-grafana.duckdns.org
+  # Read-only public access for the portfolio demo: anyone with the URL sees the
+  # dashboards without logging in, but can't edit anything or reach admin settings.
+  grafana.ini:
+    auth.anonymous:
+      enabled: true
+      org_name: Main Org.
+      org_role: Viewer

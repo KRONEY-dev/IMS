@@ -36,10 +36,6 @@ namespace InventoryService.Infrastructure.Messaging
 
             _connection = await RabbitMqConnectionFactory.CreateAsync(settingsValue, _pipelineProvider, stoppingToken);
 
-            // Publisher confirmations, with tracking enabled, make each BasicPublishAsync call below
-            // await the broker's ack before completing - without this, a message can be marked
-            // processed in the outbox table even though the broker never actually received it (e.g. a
-            // dropped connection right after the fire-and-forget publish call returns).
             _channel = await _connection.CreateChannelAsync(
                 new CreateChannelOptions(publisherConfirmationsEnabled: true, publisherConfirmationTrackingEnabled: true),
                 cancellationToken: stoppingToken);

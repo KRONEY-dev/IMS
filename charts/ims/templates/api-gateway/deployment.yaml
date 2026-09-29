@@ -35,6 +35,8 @@ spec:
               value: "127.0.0.1/32"
             - name: DocsAccessSettings__AllowedNetworks__1
               value: "::1/128"
+            - name: DocsAccessSettings__RequireIpAllowlist
+              value: {{ .Values.apiGateway.docsAccessSettings.requireIpAllowlist | quote }}
             - name: ForwardedHeadersSettings__TrustedNetworks__0
               value: {{ .Values.apiGateway.forwardedHeadersTrustedNetwork | quote }}
           resources:

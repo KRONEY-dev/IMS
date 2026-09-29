@@ -44,8 +44,6 @@ namespace InventoryService.Tests.Application.Services
             _requestContextMock.SetupGet(context => context.WarehouseIds).Returns(warehouseIds ?? []);
         }
 
-        // ---- Thresholds ----
-
         [Fact]
         public async Task CreateThresholdAsync_CallerBelowManager_ThrowsInsufficientPermissionsException()
         {
@@ -287,8 +285,6 @@ namespace InventoryService.Tests.Application.Services
             _unitOfWorkMock.Verify(uow => uow.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         }
 
-        // ---- Receive ----
-
         [Fact]
         public async Task ReceiveAsync_WorkerWithoutWarehouseAccess_ThrowsInsufficientPermissionsException()
         {
@@ -459,8 +455,6 @@ namespace InventoryService.Tests.Application.Services
                 Times.Never);
         }
 
-        // ---- Sell / Adjust (both delegate to the same decrement path) ----
-
         [Fact]
         public async Task SellAsync_StockItemNotFound_ThrowsNotFoundException()
         {
@@ -576,8 +570,6 @@ namespace InventoryService.Tests.Application.Services
                 repo => repo.BuildCreateOperation(It.Is<StockMovement>(m => m.Type == StockMovementType.Adjustment && m.Quantity == 2)),
                 Times.Once);
         }
-
-        // ---- Reads ----
 
         [Fact]
         public async Task GetStockItemByIdAsync_NotFound_ThrowsNotFoundException()

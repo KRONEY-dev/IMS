@@ -1,18 +1,22 @@
+using AccountsService.Application.Options;
 using AccountsService.Application.Services.DTOs;
 using FluentValidation;
+using Microsoft.Extensions.Options;
 
 namespace AccountsService.Application.Validators
 {
     public class RegisterRequestDTOValidator : AbstractValidator<UserServiceDTOs.RegisterRequestDTO>
     {
-        public RegisterRequestDTOValidator()
+        public RegisterRequestDTOValidator(IOptions<UserValidationSettings> settings)
         {
+            var settingsValue = settings.Value;
+
             RuleFor(x => x.FirstName).NotEmpty();
             RuleFor(x => x.LastName).NotEmpty();
             RuleFor(x => x.PhoneNumber).NotEmpty().When(x => string.IsNullOrEmpty(x.Email));
-            RuleFor(x => x.PhoneNumber).Matches(@"^\+?[1-9]\d{7,14}$").When(x => !string.IsNullOrEmpty(x.PhoneNumber));
+            RuleFor(x => x.PhoneNumber).Matches(settingsValue.PhoneNumberPattern).When(x => !string.IsNullOrEmpty(x.PhoneNumber));
             RuleFor(x => x.Email).NotEmpty().EmailAddress().When(x => string.IsNullOrEmpty(x.PhoneNumber));
-            RuleFor(x => x.Password).NotEmpty().MinimumLength(8);
+            RuleFor(x => x.Password).NotEmpty().MinimumLength(settingsValue.MinPasswordLength);
             RuleFor(x => x.Role).IsInEnum();
         }
     }
@@ -54,10 +58,10 @@ namespace AccountsService.Application.Validators
 
     public class ChangePasswordRequestDTOValidator : AbstractValidator<UserServiceDTOs.ChangePasswordRequestDTO>
     {
-        public ChangePasswordRequestDTOValidator()
+        public ChangePasswordRequestDTOValidator(IOptions<UserValidationSettings> settings)
         {
             RuleFor(x => x.CurrentPassword).NotEmpty();
-            RuleFor(x => x.NewPassword).NotEmpty().MinimumLength(8);
+            RuleFor(x => x.NewPassword).NotEmpty().MinimumLength(settings.Value.MinPasswordLength);
             RuleFor(x => x.NewPassword).NotEqual(x => x.CurrentPassword)
                 .WithMessage("New password must be different from the current password.");
         }
@@ -73,9 +77,9 @@ namespace AccountsService.Application.Validators
 
     public class ChangePhoneNumberRequestDTOValidator : AbstractValidator<UserServiceDTOs.ChangePhoneNumberRequestDTO>
     {
-        public ChangePhoneNumberRequestDTOValidator()
+        public ChangePhoneNumberRequestDTOValidator(IOptions<UserValidationSettings> settings)
         {
-            RuleFor(x => x.NewPhoneNumber).NotEmpty().Matches(@"^\+?[1-9]\d{7,14}$");
+            RuleFor(x => x.NewPhoneNumber).NotEmpty().Matches(settings.Value.PhoneNumberPattern);
         }
     }
 }

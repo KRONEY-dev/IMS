@@ -7,9 +7,6 @@ using Xunit;
 
 namespace InventoryService.Tests.Integration.Jobs
 {
-    // Proves the real Postgres query behind SupplierOrderReminderJob - not just that the
-    // predicate expression compiles, but that it translates into SQL that returns the right
-    // rows against a real database.
     [Trait("Category", "Integration")]
     [Collection(IntegrationCollection.Name)]
     public class SupplierOrderArrivingQueryTests

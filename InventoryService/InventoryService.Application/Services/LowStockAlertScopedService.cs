@@ -92,7 +92,6 @@ namespace InventoryService.Application.Services
             }
             catch (UniqueConstraintViolationException)
             {
-                // An active alert already exists (concurrent evaluation created it first) — still worth notifying below.
             }
 
             await _notificationPublisher.NotifyLowStockAlertAsync(

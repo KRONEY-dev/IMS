@@ -15,9 +15,6 @@ using Xunit;
 
 namespace InventoryService.Tests.Integration.Fixtures
 {
-    // Real Postgres 17 (matches docker-compose.yml), one container shared across every
-    // test in the "Integration" collection. Tests must not depend on table state being
-    // empty - each test uses fresh Guids for its own rows instead of resetting the DB.
     public class PostgresContainerFixture : IAsyncLifetime
     {
         private PostgreSqlContainer _container = default!;
@@ -53,10 +50,6 @@ namespace InventoryService.Tests.Integration.Fixtures
             services.AddScoped<IOutboxMessageRepository, OutboxMessageRepositoryScoped>();
             services.AddScoped<ISupplierOrderRepository, SupplierOrderRepositoryScoped>();
 
-            // IRequestContext/IMapperWrapper/INotificationPublisher are irrelevant to the
-            // low-stock evaluation logic under test here - loose mocks stand in for them so
-            // the real LowStockAlertScopedService/StockQuantityChangedEventHandler chain can
-            // still be resolved exactly as RabbitMqConsumerHostedService resolves it in production.
             services.AddSingleton(Mock.Of<IRequestContext>());
             services.AddSingleton(Mock.Of<IMapperWrapper>());
             services.AddSingleton(Mock.Of<INotificationPublisher>());

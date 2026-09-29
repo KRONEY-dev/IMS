@@ -1,4 +1,6 @@
 using ApiGateway.Authorization;
+using ApiGateway.Options;
+using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
@@ -12,10 +14,10 @@ namespace ApiGateway.Endpoints
 
     public static class DocsAccessEndpoints
     {
-        private const int MaxDescriptionLength = 30;
-
         public static void MapDocsAccessEndpoints(this WebApplication app)
         {
+            var maxDescriptionLength = app.Services.GetRequiredService<IOptions<DocsAccessSettings>>().Value.MaxDescriptionLength;
+
             var group = app.MapGroup("/gateway/docs-access").RequireAuthorization(DocsAccessPolicies.Admin);
 
             group.MapGet("/networks", async (IConnectionMultiplexer connectionMultiplexer) =>
@@ -40,9 +42,9 @@ namespace ApiGateway.Endpoints
                     return Results.BadRequest($"'{request.Network}' is not a valid CIDR network.");
                 }
 
-                if ((request.Description?.Length ?? 0) > MaxDescriptionLength)
+                if ((request.Description?.Length ?? 0) > maxDescriptionLength)
                 {
-                    return Results.BadRequest($"Description must be at most {MaxDescriptionLength} characters.");
+                    return Results.BadRequest($"Description must be at most {maxDescriptionLength} characters.");
                 }
 
                 var database = connectionMultiplexer.GetDatabase();
@@ -54,7 +56,7 @@ namespace ApiGateway.Endpoints
                 return Results.Ok();
             })
                 .WithName("AddAllowedNetwork")
-                .WithSummary("Adds a CIDR network (e.g. \"192.168.1.0/24\") with a description (up to 30 characters) to the allowlist.");
+                .WithSummary($"Adds a CIDR network (e.g. \"192.168.1.0/24\") with a description (up to {maxDescriptionLength} characters) to the allowlist.");
 
             group.MapPost("/networks/remove", async (
                 RemoveNetworkRequestDTO request, IConnectionMultiplexer connectionMultiplexer,

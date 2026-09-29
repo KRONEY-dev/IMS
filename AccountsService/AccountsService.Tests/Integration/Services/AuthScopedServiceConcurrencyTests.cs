@@ -19,12 +19,6 @@ using static AccountsService.Domain.Exceptions.GeneralExceptions;
 
 namespace AccountsService.Tests.Integration.Services
 {
-    // AuthScopedServiceTests (unit, mocked IUnitOfWork) can only prove that the service calls
-    // ExecuteInTransactionAsync with the right operations - it cannot prove the conditional UPDATE
-    // those operations compile to is actually atomic under real concurrent requests against real
-    // Postgres. This is the same class of gap that produced two real bugs in this rotation logic
-    // earlier - this test races two genuinely concurrent refreshes of the same token against the
-    // real database instead of trusting that the SQL predicate does what it says.
     [Trait("Category", "Integration")]
     [Collection(IntegrationCollection.Name)]
     public class AuthScopedServiceConcurrencyTests
@@ -58,10 +52,6 @@ namespace AccountsService.Tests.Integration.Services
             var successes = results.Count(r => r.Response is not null);
             var softFailures = results.Count(r => r.Exception is InvalidRefreshTokenException);
 
-            // Within the grace period, losing the race is indistinguishable from a benign client
-            // retry - it must fail softly (InvalidRefreshTokenException), never
-            // RefreshTokenReuseDetectedException, which would revoke the winner's brand-new session
-            // for a race the winner did nothing wrong in.
             Assert.Equal(1, successes);
             Assert.Equal(1, softFailures);
 
@@ -72,11 +62,8 @@ namespace AccountsService.Tests.Integration.Services
             var originalToken = await dbContext.RefreshTokens.FindAsync(token.Id);
             var winnerNewToken = await dbContext.RefreshTokens.FindAsync(winnerNewTokenId);
 
-            // The original token is revoked by the winner's own successful rotation - not by a
-            // session-wide chain revoke.
             Assert.NotNull(originalToken!.RevokedAt);
 
-            // The winner's brand-new token must stay usable - the loser must not have nuked it.
             Assert.Null(winnerNewToken!.RevokedAt);
         }
 

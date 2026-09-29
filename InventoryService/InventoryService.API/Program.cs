@@ -46,7 +46,6 @@ app.MapMetrics();
 
 app.Run();
 
-// Exposes the top-level-statements entry point to WebApplicationFactory<Program> in tests.
 public partial class Program
 {
 }

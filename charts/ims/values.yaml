@@ -122,6 +122,8 @@ apiGateway:
   replicaCount: 1
   port: 8081
   forwardedHeadersTrustedNetwork: "10.244.0.0/16"
+  docsAccessSettings:
+    requireIpAllowlist: true
   resources:
     requests:
       cpu: 150m

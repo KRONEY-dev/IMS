@@ -59,9 +59,6 @@ namespace InventoryService.Tests.Integration.Messaging
 
                 var properties = new BasicProperties { Persistent = true };
 
-                // Publishing the same event body twice simulates exactly what at-least-once
-                // redelivery produces from the consumer's point of view: the identical message
-                // handled more than once.
                 await channel.BasicPublishAsync(exchange: string.Empty, routingKey: queueName,
                     mandatory: false, basicProperties: properties, body: body);
                 await channel.BasicPublishAsync(exchange: string.Empty, routingKey: queueName,

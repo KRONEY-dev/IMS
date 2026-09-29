@@ -23,8 +23,6 @@ namespace InventoryService.Infrastructure.Database.Configurations
                 .HasForeignKey(stockThreshold => stockThreshold.WarehouseId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // UseXminAsConcurrencyToken() was removed from newer versions of the Npgsql provider —
-            // map the shadow property directly onto Postgres's system column "xmin" (type xid) instead.
             builder.Property<uint>("xmin")
                 .HasColumnType("xid")
                 .IsRowVersion();

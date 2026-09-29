@@ -5,13 +5,6 @@ using Xunit;
 
 namespace InventoryService.Tests.Integration.Fixtures
 {
-    // A Postgres container dedicated to InventoryApiFactory's real app host - deliberately
-    // separate from PostgresContainerFixture. The real host runs its own long-lived
-    // RabbitMqOutboxPublisherHostedService/RabbitMqConsumerHostedService for as long as the
-    // collection is alive; if it shared PostgresContainerFixture's database, it would compete
-    // with OutboxPublisherIdempotencyTests/ConsumerDuplicateDeliveryTests for the same
-    // OutboxMessages rows and silently steal them onto its own queue before those tests'
-    // own hosted-service instances get a chance to process them.
     public class ApiHostPostgresContainerFixture : IAsyncLifetime
     {
         private PostgreSqlContainer _container = default!;

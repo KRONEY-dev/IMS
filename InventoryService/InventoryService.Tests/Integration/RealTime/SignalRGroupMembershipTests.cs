@@ -9,9 +9,6 @@ using Xunit;
 
 namespace InventoryService.Tests.Integration.RealTime
 {
-    // Boots the real InventoryService.API host and connects a real SignalR client to it, proving
-    // that InventoryHub.JoinWarehouse actually scopes broadcasts to the joined warehouse's group -
-    // not just that the group-name string is computed consistently on both ends.
     [Trait("Category", "Integration")]
     [Collection(IntegrationCollection.Name)]
     public class SignalRGroupMembershipTests

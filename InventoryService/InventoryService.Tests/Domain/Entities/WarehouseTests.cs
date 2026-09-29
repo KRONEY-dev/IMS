@@ -47,9 +47,6 @@ namespace InventoryService.Tests.Domain.Entities
         [Fact]
         public void IsOpenNow_ConvertsNonUtcOffsetToUtc_UsesUtcDayOfWeekNotLocalDay()
         {
-            // Local wall-clock (2023-01-02 01:00 +03:00) is a Monday; converted to UTC it is
-            // 2023-01-01 22:00, a Sunday. Sunday is configured closed, Monday is open all day —
-            // this only passes if the UTC day (Sunday) is used, not the offset's local day (Monday).
             var warehouse = CreateWarehouse(WarehouseStatus.Active,
                 (DayOfWeek.Sunday, true, TimeOnly.MinValue, TimeOnly.MinValue),
                 (DayOfWeek.Monday, false, TimeOnly.MinValue, TimeOnly.MinValue));

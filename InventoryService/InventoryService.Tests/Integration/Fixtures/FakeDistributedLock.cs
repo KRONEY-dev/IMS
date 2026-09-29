@@ -2,13 +2,18 @@ using Shared.Kernel.Caching;
 
 namespace InventoryService.Tests.Integration.Fixtures
 {
-    // Stands in for the real Redis-backed IDistributedLock so job tests can exercise the
-    // job's own logic against a real database without also needing a Redis container.
-    public class FakeDistributedLock(bool acquires) : IDistributedLock
+    public class FakeDistributedLock : IDistributedLock
     {
+        private readonly bool _acquires;
+
+        public FakeDistributedLock(bool acquires)
+        {
+            _acquires = acquires;
+        }
+
         public Task<bool> TryAcquireAsync(string key, string instanceId, TimeSpan ttl, CancellationToken cancellationToken)
         {
-            return Task.FromResult(acquires);
+            return Task.FromResult(_acquires);
         }
     }
 }

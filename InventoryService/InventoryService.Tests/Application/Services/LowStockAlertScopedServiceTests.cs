@@ -276,9 +276,6 @@ namespace InventoryService.Tests.Application.Services
         [Fact]
         public async Task EvaluateAfterDecreaseAsync_UniqueConstraintViolationOnCreate_IsSwallowedNotPropagated()
         {
-            // This only proves the service-layer catch swallows an exception thrown by a MOCKED
-            // IUnitOfWork. It does NOT prove Postgres's real unique-index race guard is atomic
-            // under actual concurrency — that requires a live database (Testcontainers, later phase).
             var productId = Guid.NewGuid();
             var warehouseId = Guid.NewGuid();
             var threshold = StockThreshold.Create(productId, warehouseId, reorderLevel: 10, reorderQuantity: 5);
@@ -306,8 +303,6 @@ namespace InventoryService.Tests.Application.Services
 
             Assert.Null(exception);
 
-            // Still notifies even though creation was swallowed as a duplicate — a concurrent
-            // evaluation already created the active alert, so clients still need to hear about it.
             _notificationPublisherMock.Verify(
                 publisher => publisher.NotifyLowStockAlertAsync(
                     It.Is<NotificationServiceDTOs.LowStockAlertNotification>(n => n.ProductId == productId && n.WarehouseId == warehouseId),
@@ -402,8 +397,6 @@ namespace InventoryService.Tests.Application.Services
         [Fact]
         public async Task EvaluateAfterIncreaseAsync_ResolveOperationAffectsNoRows_DoesNotNotify()
         {
-            // No active alert existed to resolve (already resolved by a concurrent evaluation) —
-            // ExecuteInTransactionAsync reports 0 affected rows, so no notification should fire.
             var productId = Guid.NewGuid();
             var warehouseId = Guid.NewGuid();
             var threshold = StockThreshold.Create(productId, warehouseId, reorderLevel: 10, reorderQuantity: 5);

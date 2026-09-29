@@ -67,8 +67,6 @@ namespace AccountsService.Tests.Integration.Jobs
 
             var token = RefreshToken.Create(user.Id, Guid.NewGuid(), $"hash-{Guid.NewGuid()}", TimeSpan.FromDays(7));
 
-            // ExpiresAt/RevokedAt have private setters - the only way to backdate them for a
-            // boundary test is the same reflection helper the unit tests already use.
             if (expiresAt is not null)
             {
                 typeof(RefreshToken).GetProperty(nameof(RefreshToken.ExpiresAt))!.SetValue(token, expiresAt.Value);

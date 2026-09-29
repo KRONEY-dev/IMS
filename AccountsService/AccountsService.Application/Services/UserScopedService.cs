@@ -225,7 +225,6 @@ namespace AccountsService.Application.Services
             return new UserServiceDTOs.ChangePhoneNumberResponseDTO();
         }
 
-        // A Manager can only manage Workers, and only if they share at least one warehouse.
         private void EnsureManagerCanManageWorker(User targetUser)
         {
             if (RequestContext.GetUserRole() != UserRole.Manager)

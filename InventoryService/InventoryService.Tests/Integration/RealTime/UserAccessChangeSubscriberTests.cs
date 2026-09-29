@@ -13,11 +13,6 @@ using Xunit;
 
 namespace InventoryService.Tests.Integration.RealTime
 {
-    // Accounts publishes these two events to Redis pub/sub whenever a user's warehouse access or
-    // session is revoked; InventoryService's UserAccessChangeSubscriberHostedService is the only
-    // consumer. Nothing exercised this cross-service wiring before - these tests publish the real
-    // events over a real Redis connection against the real running host and observe the real
-    // SignalR-visible effect, instead of trusting that the channel names and JSON shapes agree.
     [Trait("Category", "Integration")]
     [Collection(IntegrationCollection.Name)]
     public class UserAccessChangeSubscriberTests
@@ -105,8 +100,6 @@ namespace InventoryService.Tests.Integration.RealTime
             return received;
         }
 
-        // The subscriber processes messages on its own background loop - there is no ack signal to
-        // await, so tests give it a short, generous window before asserting on its effect.
         private static Task WaitForSubscriberToProcessAsync()
         {
             return Task.Delay(TimeSpan.FromSeconds(1));

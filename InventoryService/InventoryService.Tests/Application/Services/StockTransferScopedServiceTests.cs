@@ -28,9 +28,6 @@ namespace InventoryService.Tests.Application.Services
 
         public StockTransferScopedServiceTests()
         {
-            // Direct-operation builders are irrelevant to the branch under test in most cases —
-            // stub them to return a benign no-op operation so ExecuteInTransactionAsync's mocked
-            // return value (not the operation list contents) drives success/failure in those tests.
             _stockItemRepositoryMock.Setup(repo => repo.BuildDecrementOperation(It.IsAny<Guid>(), It.IsAny<int>())).Returns(Mock.Of<IDirectOperation>());
             _stockItemRepositoryMock.Setup(repo => repo.BuildIncrementOperation(It.IsAny<Guid>(), It.IsAny<int>())).Returns(Mock.Of<IDirectOperation>());
             _stockItemRepositoryMock.Setup(repo => repo.BuildCreateOperation(It.IsAny<StockItem>())).Returns(Mock.Of<IDirectOperation>());
@@ -62,8 +59,6 @@ namespace InventoryService.Tests.Application.Services
             return StockTransfer.Create(Guid.NewGuid(), productId ?? Guid.NewGuid(), sourceWarehouseId,
                 destinationWarehouseId, batchId ?? Guid.NewGuid(), quantity, 5m, Guid.NewGuid(), DateTime.UtcNow.AddDays(3));
         }
-
-        // ---- InitiateAsync ----
 
         [Fact]
         public async Task InitiateAsync_SourceStockItemNotFound_ThrowsNotFoundException()
@@ -207,8 +202,6 @@ namespace InventoryService.Tests.Application.Services
                     It.IsAny<CancellationToken>()),
                 Times.Never);
         }
-
-        // ---- ReceiveAsync ----
 
         [Fact]
         public async Task ReceiveAsync_TransferNotFound_ThrowsNotFoundException()
@@ -396,8 +389,6 @@ namespace InventoryService.Tests.Application.Services
                 Times.Never);
         }
 
-        // ---- CancelAsync ----
-
         [Fact]
         public async Task CancelAsync_TransferNotFound_ThrowsNotFoundException()
         {
@@ -510,8 +501,6 @@ namespace InventoryService.Tests.Application.Services
             await Assert.ThrowsAsync<StockTransferNotInTransitException>(() => sut.CancelAsync(
                 new StockTransferServiceDTOs.CancelTransferRequestDTO(transfer.Id), CancellationToken.None));
         }
-
-        // ---- Reads ----
 
         [Fact]
         public async Task GetByIdAsync_NotFound_ThrowsNotFoundException()

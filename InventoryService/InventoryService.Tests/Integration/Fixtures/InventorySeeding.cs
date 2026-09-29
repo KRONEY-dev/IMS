@@ -4,10 +4,6 @@ using InventoryService.Infrastructure.Database;
 
 namespace InventoryService.Tests.Integration.Fixtures
 {
-    // Shared arrange-phase helper for integration tests: seeds a warehouse/product pair with
-    // a reorder threshold and a stock quantity already below it, so LowStockAlertScopedService
-    // has something real to evaluate against. Bypasses repositories/IUnitOfWork on purpose -
-    // this is test data setup, not the behavior under test.
     public static class InventorySeeding
     {
         public static async Task<(Guid ProductId, Guid WarehouseId)> SeedBelowThresholdAsync(

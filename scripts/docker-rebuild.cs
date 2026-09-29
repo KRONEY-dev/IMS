@@ -1,7 +1,3 @@
-// Rebuilds and restarts IMS services in Docker Compose - a compact replacement
-// for "docker compose up -d --build" so you don't have to remember it every time.
-// Run with no args to rebuild everything, or pass a service name (e.g. api-gateway)
-// to rebuild just that one.
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 

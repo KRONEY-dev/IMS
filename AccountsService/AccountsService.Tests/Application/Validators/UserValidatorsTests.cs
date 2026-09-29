@@ -1,3 +1,4 @@
+using AccountsService.Application.Options;
 using AccountsService.Application.Services.DTOs;
 using AccountsService.Application.Validators;
 using FluentValidation.TestHelper;
@@ -7,9 +8,12 @@ namespace AccountsService.Tests.Application.Validators
 {
     public class UserValidatorsTests
     {
-        private readonly ChangePasswordRequestDTOValidator _changePasswordValidator = new();
+        private static readonly Microsoft.Extensions.Options.IOptions<UserValidationSettings> DefaultSettings =
+            Microsoft.Extensions.Options.Options.Create(new UserValidationSettings());
+
+        private readonly ChangePasswordRequestDTOValidator _changePasswordValidator = new(DefaultSettings);
         private readonly ChangeEmailRequestDTOValidator _changeEmailValidator = new();
-        private readonly ChangePhoneNumberRequestDTOValidator _changePhoneNumberValidator = new();
+        private readonly ChangePhoneNumberRequestDTOValidator _changePhoneNumberValidator = new(DefaultSettings);
 
         [Fact]
         public void ChangePassword_EmptyCurrentPassword_HasValidationError()

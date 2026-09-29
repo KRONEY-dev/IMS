@@ -1,4 +1,5 @@
 using ApiGateway.Authorization;
+using ApiGateway.Options;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -21,11 +22,12 @@ namespace ApiGateway.Tests.Authorization
             _connectionMultiplexerMock.Setup(m => m.GetDatabase(It.IsAny<int>(), It.IsAny<object>())).Returns(_databaseMock.Object);
         }
 
-        private IpAllowlistAuthorizationHandler CreateHandler()
+        private IpAllowlistAuthorizationHandler CreateHandler(bool requireIpAllowlist = true)
         {
             return new IpAllowlistAuthorizationHandler(
                 _connectionMultiplexerMock.Object, _httpContextAccessorMock.Object,
-                Mock.Of<ILogger<IpAllowlistAuthorizationHandler>>());
+                Mock.Of<ILogger<IpAllowlistAuthorizationHandler>>(),
+                Microsoft.Extensions.Options.Options.Create(new DocsAccessSettings { RequireIpAllowlist = requireIpAllowlist }));
         }
 
         private void SetRemoteIp(string ip)
@@ -119,6 +121,17 @@ namespace ApiGateway.Tests.Authorization
             var context = await RunAsync(CreateHandler());
 
             Assert.False(context.HasSucceeded);
+        }
+
+        [Fact]
+        public async Task HandleRequirementAsync_RequireIpAllowlistDisabled_SucceedsWithoutCheckingTheIp()
+        {
+            _httpContextAccessorMock.Setup(a => a.HttpContext).Returns((HttpContext?)null);
+
+            var context = await RunAsync(CreateHandler(requireIpAllowlist: false));
+
+            Assert.True(context.HasSucceeded);
+            _databaseMock.Verify(d => d.HashKeysAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()), Times.Never);
         }
     }
 }

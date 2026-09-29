@@ -11,11 +11,6 @@ using Xunit;
 
 namespace InventoryService.Tests.Integration
 {
-    // The full stock-sale pipeline end to end, against the real app host and real
-    // Postgres/RabbitMQ/Redis: a real Sell HTTP call decrements stock and writes an outbox row,
-    // the real outbox publisher moves it onto a real queue, the real consumer re-evaluates the
-    // threshold and creates a LowStockAlert, and both hops (the immediate StockLevelChanged push
-    // and the delayed, async LowStockAlert push) land on a real SignalR client connection.
     [Trait("Category", "Integration")]
     [Collection(IntegrationCollection.Name)]
     public class FullPipelineE2ETests
@@ -68,7 +63,6 @@ namespace InventoryService.Tests.Integration
             receiveResponse.EnsureSuccessStatusCode();
             var stockItem = await receiveResponse.Content.ReadFromJsonAsync<StockServiceDTOs.StockItemDTO>();
 
-            // 20 -> 5 crosses below the reorder level of 10.
             var sellResponse = await client.PostAsJsonAsync("api/Stock/Sell",
                 new StockServiceDTOs.SellStockRequestDTO(stockItem!.Id, Quantity: 15));
             sellResponse.EnsureSuccessStatusCode();
@@ -76,8 +70,6 @@ namespace InventoryService.Tests.Integration
             var stockLevelCompleted = await Task.WhenAny(stockLevelChanged.Task, Task.Delay(TimeSpan.FromSeconds(5)));
             Assert.Same(stockLevelChanged.Task, stockLevelCompleted);
 
-            // Unlike StockLevelChanged (pushed synchronously inside the Sell request), LowStockAlert
-            // only arrives after the outbox publisher and consumer hop through a real RabbitMQ queue.
             var lowStockCompleted = await Task.WhenAny(lowStockAlert.Task, Task.Delay(TimeSpan.FromSeconds(15)));
             Assert.Same(lowStockAlert.Task, lowStockCompleted);
 

@@ -46,6 +46,7 @@ namespace AccountsService.Application
         private static void ConfigureOptions(IServiceCollection services, IConfiguration configuration)
         {
             services.ConfigureOption<JwtSettings>(configuration);
+            services.ConfigureOption<UserValidationSettings>(configuration);
         }
     }
 }

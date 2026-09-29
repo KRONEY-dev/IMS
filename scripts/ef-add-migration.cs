@@ -1,8 +1,3 @@
-// Generates a new EF Core migration for one of the IMS microservices - a compact
-// replacement for manually typing "dotnet ef migrations add" with the correct
-// --project/--startup-project/--output-dir paths, which are easy to mix up.
-// Run with no args for an interactive prompt, or pass "accounts"/"inventory" and
-// a migration name directly (e.g. "accounts AddSomething").
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 

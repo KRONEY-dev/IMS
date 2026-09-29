@@ -1,20 +1,3 @@
-// Loads locally-built IMS Docker images into every node of the local kind-based
-// Kubernetes cluster (Docker Desktop's Kubernetes).
-//
-// Docker Desktop's Kubernetes (kind provisioning) runs each cluster node as its
-// own container with an isolated containerd image store, separate from Docker
-// Desktop's own image cache. A locally built image (docker compose build) is
-// invisible to the cluster until it's explicitly imported into every node this
-// way - needed again after every rebuild, since imagePullPolicy is Never for
-// these images (there is no registry to pull them from).
-//
-// Goes through a temp file rather than "docker save | docker exec ... ctr import -"
-// because piping raw binary output between native processes isn't reliable on
-// every shell (Windows PowerShell 5.1 re-encodes it as text and corrupts it).
-//
-// Copies into /kind-load rather than /tmp inside the node - /tmp there is a
-// tmpfs mount, and "docker cp" silently no-ops when writing into a container's
-// tmpfs mount (exits 0, file never actually appears).
 using System.Diagnostics;
 
 var images = args.Length > 0

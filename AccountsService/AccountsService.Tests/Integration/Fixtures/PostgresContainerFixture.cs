@@ -9,9 +9,6 @@ using Xunit;
 
 namespace AccountsService.Tests.Integration.Fixtures
 {
-    // Real Postgres 17 (matches docker-compose.yml), one container shared across every
-    // test in the "Integration" collection. Tests must not depend on table state being
-    // empty - each test uses fresh Guids for its own rows instead of resetting the DB.
     public class PostgresContainerFixture : IAsyncLifetime
     {
         private PostgreSqlContainer _container = default!;

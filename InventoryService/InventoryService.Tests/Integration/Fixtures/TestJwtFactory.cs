@@ -5,10 +5,6 @@ using System.Security.Claims;
 
 namespace InventoryService.Tests.Integration.Fixtures
 {
-    // Builds an unsigned JWT-shaped token for tests. This is safe here specifically because
-    // InventoryService never verifies a JWT signature itself (Shared.Kernel.AspNetCore's
-    // JwtClaimsAuthenticationHandler only decodes claims) - the Gateway is the only place
-    // that checks the signature, and requests reach InventoryService.API directly in tests.
     public static class TestJwtFactory
     {
         public static string CreateToken(Guid userId, UserRole role, IEnumerable<Guid>? warehouseIds = null)

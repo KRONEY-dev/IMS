@@ -4,13 +4,22 @@ using Microsoft.OpenApi;
 
 namespace Shared.Kernel.AspNetCore.OpenApi
 {
-    public sealed class BearerSecuritySchemeTransformer(IAuthenticationSchemeProvider authenticationSchemeProvider, string schemeName) : IOpenApiDocumentTransformer
+    public sealed class BearerSecuritySchemeTransformer : IOpenApiDocumentTransformer
     {
+        private readonly IAuthenticationSchemeProvider _authenticationSchemeProvider;
+        private readonly string _schemeName;
+
+        public BearerSecuritySchemeTransformer(IAuthenticationSchemeProvider authenticationSchemeProvider, string schemeName)
+        {
+            _authenticationSchemeProvider = authenticationSchemeProvider;
+            _schemeName = schemeName;
+        }
+
         public async Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
         {
-            var authenticationSchemes = await authenticationSchemeProvider.GetAllSchemesAsync();
+            var authenticationSchemes = await _authenticationSchemeProvider.GetAllSchemesAsync();
 
-            if (!authenticationSchemes.Any(scheme => scheme.Name == schemeName))
+            if (!authenticationSchemes.Any(scheme => scheme.Name == _schemeName))
             {
                 return;
             }

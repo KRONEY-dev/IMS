@@ -59,8 +59,6 @@ namespace InventoryService.Tests.Application.Services
             return SupplierOrder.Create(Guid.NewGuid(), warehouseId, createdByUserId ?? Guid.NewGuid());
         }
 
-        // ---- CreateAsync ----
-
         [Fact]
         public async Task CreateAsync_CallerBelowManager_ThrowsInsufficientPermissionsException()
         {
@@ -114,8 +112,6 @@ namespace InventoryService.Tests.Application.Services
 
             _unitOfWorkMock.Verify(uow => uow.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         }
-
-        // ---- GetByIdAsync ----
 
         [Fact]
         public async Task GetByIdAsync_NotFound_ThrowsNotFoundException()
@@ -173,8 +169,6 @@ namespace InventoryService.Tests.Application.Services
                 new SupplierOrderServiceDTOs.GetSupplierOrderByIdRequestDTO(order.Id), CancellationToken.None));
         }
 
-        // ---- GetAllAsync ----
-
         [Fact]
         public async Task GetAllAsync_Worker_FiltersToOwnWarehouses()
         {
@@ -220,8 +214,6 @@ namespace InventoryService.Tests.Application.Services
             _supplierOrderRepositoryMock.Verify(
                 repo => repo.GetAllAsync(null, It.IsAny<CancellationToken>()), Times.Once);
         }
-
-        // ---- SubmitAsync ----
 
         [Fact]
         public async Task SubmitAsync_CallerBelowManager_ThrowsInsufficientPermissionsException()
@@ -304,8 +296,6 @@ namespace InventoryService.Tests.Application.Services
                 new SupplierOrderServiceDTOs.SubmitSupplierOrderRequestDTO(order.Id, null), CancellationToken.None));
         }
 
-        // ---- ReceiveAsync ----
-
         [Fact]
         public async Task ReceiveAsync_NotFound_ThrowsNotFoundException()
         {
@@ -356,7 +346,6 @@ namespace InventoryService.Tests.Application.Services
 
             var sut = CreateSut();
 
-            // Fewer items supplied than exist on the order — partial receipt is not supported.
             await Assert.ThrowsAsync<SupplierOrderPartialReceiptNotSupportedException>(() => sut.ReceiveAsync(
                 new SupplierOrderServiceDTOs.ReceiveSupplierOrderRequestDTO(order.Id, []), CancellationToken.None));
         }
@@ -379,7 +368,6 @@ namespace InventoryService.Tests.Application.Services
 
             var sut = CreateSut();
 
-            // Same count, but references an item ID that doesn't belong to this order.
             await Assert.ThrowsAsync<SupplierOrderPartialReceiptNotSupportedException>(() => sut.ReceiveAsync(
                 new SupplierOrderServiceDTOs.ReceiveSupplierOrderRequestDTO(order.Id,
                     [new SupplierOrderServiceDTOs.ReceiveSupplierOrderItemDTO(Guid.NewGuid(), 5m)]), CancellationToken.None));
