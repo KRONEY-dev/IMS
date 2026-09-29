@@ -45,10 +45,10 @@ rabbitmq:
     size: 1Gi
   resources:
     requests:
-      cpu: 300m
+      cpu: 400m
       memory: 150Mi
     limits:
-      cpu: 600m
+      cpu: 900m
       memory: 300Mi
 
 redis:

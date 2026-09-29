@@ -17,8 +17,8 @@ namespace ApiGateway.Authentication
                 .AddJwtBearer();
 
             services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
-                .Configure<IOptions<JwtValidationSettings>, IAccessTokenBlacklist, IUserAccessRevocation>(
-                    (options, jwtSettings, accessTokenBlacklist, userAccessRevocation) =>
+                .Configure<IOptions<JwtValidationSettings>, IAccessTokenBlacklist, IUserAccessRevocation, ILogger<JwtBearerOptions>>(
+                    (options, jwtSettings, accessTokenBlacklist, userAccessRevocation, logger) =>
                 {
                     var settings = jwtSettings.Value;
 
@@ -46,12 +46,14 @@ namespace ApiGateway.Authentication
 
                             if (jti is null)
                             {
+                                logger.LogWarning("Rejected access token with no jti claim");
                                 context.Fail("Access token is missing a jti claim.");
                                 return;
                             }
 
                             if (await accessTokenBlacklist.IsBlacklistedAsync(jti, context.HttpContext.RequestAborted))
                             {
+                                logger.LogWarning("Rejected blacklisted access token {Jti}", jti);
                                 context.Fail("Access token has been revoked.");
                                 return;
                             }
@@ -61,6 +63,7 @@ namespace ApiGateway.Authentication
 
                             if (sub is null || iatClaim is null)
                             {
+                                logger.LogWarning("Rejected access token {Jti} missing sub/iat claims", jti);
                                 context.Fail("Access token is missing required claims.");
                                 return;
                             }
@@ -71,6 +74,7 @@ namespace ApiGateway.Authentication
 
                             if (revokedAt is not null && issuedAt <= revokedAt)
                             {
+                                logger.LogWarning("Rejected access token {Jti} for user {UserId} issued before access was revoked", jti, sub);
                                 context.Fail("User access has been revoked; refresh required.");
                             }
                         }

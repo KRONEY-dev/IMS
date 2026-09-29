@@ -1,6 +1,8 @@
 ﻿using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace Shared.Kernel.AspNetCore.Requests
 {
@@ -8,8 +10,13 @@ namespace Shared.Kernel.AspNetCore.Requests
     {
         public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
         {
-            var request = context.ActionArguments.Values
-                .FirstOrDefault(argument => argument is not null && argument is not CancellationToken);
+            var bodyParameterName = context.ActionDescriptor.Parameters
+                .OfType<ControllerParameterDescriptor>()
+                .FirstOrDefault(parameter => parameter.BindingInfo?.BindingSource == BindingSource.Body)?.Name;
+
+            var request = bodyParameterName is not null && context.ActionArguments.TryGetValue(bodyParameterName, out var value)
+                ? value
+                : null;
 
             if (request is not null)
             {

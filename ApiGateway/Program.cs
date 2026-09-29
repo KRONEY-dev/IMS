@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Prometheus;
 using Shared.Kernel.AspNetCore.HealthChecks;
 using Shared.Kernel.AspNetCore.OpenApi;
+using Shared.Kernel.AspNetCore.Requests.Middleware;
 using Shared.Kernel.Extensions;
 using Shared.Kernel.Redis;
 using StackExchange.Redis;
@@ -57,6 +58,8 @@ var app = builder.Build();
 app.UseForwardedHeaders();
 
 app.UseHttpMetrics();
+
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 await DocsAllowlistSeeder.SeedAsync(app.Services);
 

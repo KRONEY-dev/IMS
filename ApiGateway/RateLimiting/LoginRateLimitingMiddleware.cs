@@ -5,20 +5,21 @@ using Yarp.ReverseProxy.Model;
 
 namespace ApiGateway.RateLimiting
 {
-    public class LoginRateLimitingMiddleware(RequestDelegate next, IRateLimiter rateLimiter, IOptions<RateLimitingSettings> settings)
+    public class LoginRateLimitingMiddleware(RequestDelegate next, IRateLimiter rateLimiter,
+        IOptions<RateLimitingSettings> settings, ILogger<LoginRateLimitingMiddleware> logger)
     {
         public async Task InvokeAsync(HttpContext context)
         {
-            var routeMetadata = context.GetEndpoint()?.Metadata.GetMetadata<RouteModel>()?.Config.Metadata;
+            var routeConfig = context.GetEndpoint()?.Metadata.GetMetadata<RouteModel>()?.Config;
 
-            if (routeMetadata is null || !routeMetadata.ContainsKey(RateLimitingRouteMetadata.RateLimitedKey))
+            if (routeConfig?.Metadata is null || !routeConfig.Metadata.ContainsKey(RateLimitingRouteMetadata.RateLimitedKey))
             {
                 await next(context);
                 return;
             }
 
             var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-            var key = $"{context.Request.Path}:{clientIp}";
+            var key = $"{routeConfig.RouteId}:{clientIp}";
 
             var settingsValue = settings.Value;
             var allowed = await rateLimiter.TryAcquireAsync(
@@ -26,6 +27,7 @@ namespace ApiGateway.RateLimiting
 
             if (!allowed)
             {
+                logger.LogWarning("Rate limit exceeded for {RouteId} from {ClientIp}", routeConfig.RouteId, clientIp);
                 context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
                 return;
             }
