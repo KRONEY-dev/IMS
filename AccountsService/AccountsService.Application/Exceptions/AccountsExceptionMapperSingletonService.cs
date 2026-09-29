@@ -15,6 +15,7 @@ namespace AccountsService.Application.Exceptions
             EmailAlreadyTakenException => HttpStatusCode.Conflict,
             RefreshTokenAlreadyRevokedException => HttpStatusCode.Conflict,
             PhoneNumberAlreadyTakenException => HttpStatusCode.Conflict,
+            UniqueConstraintViolationException => HttpStatusCode.Conflict,
             _ => null
         };
     }

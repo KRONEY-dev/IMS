@@ -331,6 +331,42 @@ namespace InventoryService.Tests.Application.Services
         }
 
         [Fact]
+        public async Task ReceiveAsync_FirstReceiptRacesConcurrentCreate_RetriesAsIncrementAndSucceeds()
+        {
+            var destinationWarehouseId = Guid.NewGuid();
+            var transfer = CreateTransfer(Guid.NewGuid(), destinationWarehouseId, quantity: 10);
+            var winningItem = StockItem.Create(transfer.ProductId, destinationWarehouseId, transfer.BatchId, 5, transfer.Price);
+            SetActor(UserRole.Manager, warehouseIds: [destinationWarehouseId]);
+
+            _stockTransferRepositoryMock
+                .Setup(repo => repo.GetByIdAsync(transfer.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(transfer);
+
+            _stockItemRepositoryMock
+                .SetupSequence(repo => repo.GetByWarehouseAndBatchIdAsync(
+                    destinationWarehouseId, transfer.ProductId, transfer.BatchId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync((StockItem?)null)
+                .ReturnsAsync(winningItem);
+
+            _unitOfWorkMock
+                .SetupSequence(uow => uow.ExecuteInTransactionAsync(It.IsAny<IReadOnlyList<IDirectOperation>>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new UniqueConstraintViolationException(new InvalidOperationException("duplicate key")))
+                .ReturnsAsync(true);
+
+            var sut = CreateSut();
+
+            var response = await sut.ReceiveAsync(
+                new StockTransferServiceDTOs.ReceiveTransferRequestDTO(transfer.Id, 4), CancellationToken.None);
+
+            Assert.Equal(6, response.RemainingQuantity);
+
+            _stockItemRepositoryMock.Verify(repo => repo.BuildIncrementOperation(winningItem.Id, 4), Times.Once);
+            _stockItemRepositoryMock.Verify(repo => repo.BuildCreateOperation(It.IsAny<StockItem>()), Times.Once);
+            _unitOfWorkMock.Verify(uow => uow.ExecuteInTransactionAsync(
+                It.IsAny<IReadOnlyList<IDirectOperation>>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+        }
+
+        [Fact]
         public async Task ReceiveAsync_TransactionFails_ThrowsStockTransferNotInTransitExceptionAndDoesNotNotify()
         {
             var destinationWarehouseId = Guid.NewGuid();

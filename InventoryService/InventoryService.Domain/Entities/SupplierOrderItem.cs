@@ -1,4 +1,5 @@
 using InventoryService.Domain.Entities.Base;
+using System.Linq.Expressions;
 using static InventoryService.Domain.Exceptions.GeneralExceptions;
 
 namespace InventoryService.Domain.Entities
@@ -26,6 +27,11 @@ namespace InventoryService.Domain.Entities
                 Quantity = quantity,
                 PurchasePrice = purchasePrice
             };
+        }
+
+        public static Expression<Func<SupplierOrderItem, bool>> BelongsToOrders(IReadOnlyList<Guid> supplierOrderIds)
+        {
+            return item => supplierOrderIds.Contains(item.SupplierOrderId);
         }
 
         private static void EnsureNonNegative(string fieldName, decimal value)

@@ -12,7 +12,7 @@ namespace InventoryService.Infrastructure.Database.Configurations
 
             builder.HasIndex(lowStockAlert => new { lowStockAlert.ProductId, lowStockAlert.WarehouseId })
                 .IsUnique()
-                .HasFilter("\"Status\" = 0");
+                .HasFilter($"\"Status\" = {(int)LowStockAlertStatus.Active}");
 
             builder.HasOne<Product>()
                 .WithMany()

@@ -152,36 +152,21 @@ namespace InventoryService.Application.Services
             var destinationItem = await _stockItemRepository.GetByWarehouseAndBatchIdAsync(
                 transfer.DestinationWarehouseId, transfer.ProductId, transfer.BatchId, cancellationToken);
 
-            var operations = new List<IDirectOperation>
-            {
-                _stockTransferRepository.BuildReceiveOperation(transfer.Id, request.Quantity, performedByUserId)
-            };
+            bool success;
 
-            Guid destinationStockItemId;
-
-            if (destinationItem is not null)
+            try
             {
-                destinationStockItemId = destinationItem.Id;
-                operations.Add(_stockItemRepository.BuildIncrementOperation(destinationItem.Id, request.Quantity));
+                success = await ExecuteReceiveOperationsAsync(
+                    transfer, request.Quantity, performedByUserId, destinationItem, cancellationToken);
             }
-            else
+            catch (UniqueConstraintViolationException) when (destinationItem is null)
             {
-                var newStockItem = StockItem.Create(transfer.ProductId, transfer.DestinationWarehouseId,
-                    transfer.BatchId, request.Quantity, transfer.Price);
-                destinationStockItemId = newStockItem.Id;
-                operations.Add(_stockItemRepository.BuildCreateOperation(newStockItem));
+                destinationItem = await _stockItemRepository.GetByWarehouseAndBatchIdAsync(
+                    transfer.DestinationWarehouseId, transfer.ProductId, transfer.BatchId, cancellationToken);
+
+                success = await ExecuteReceiveOperationsAsync(
+                    transfer, request.Quantity, performedByUserId, destinationItem, cancellationToken);
             }
-
-            var movement = StockMovement.Create(destinationStockItemId, transfer.ProductId,
-                transfer.DestinationWarehouseId, transfer.BatchId, transfer.Price, StockMovementType.In,
-                request.Quantity, transfer.Id, transfer.InitiatedByUserId, performedByUserId);
-
-            operations.Add(_stockMovementRepository.BuildCreateOperation(movement));
-
-            operations.Add(_outboxMessageService.BuildCreateOperation(
-                new StockQuantityChangedEvent(transfer.ProductId, transfer.DestinationWarehouseId, Increased: true)));
-
-            var success = await UnitOfWork.ExecuteInTransactionAsync(operations, cancellationToken);
 
             if (!success)
             {
@@ -195,6 +180,41 @@ namespace InventoryService.Application.Services
             var remainingQuantity = transfer.Quantity - request.Quantity;
 
             return new StockTransferServiceDTOs.ReceiveTransferResponseDTO(remainingQuantity, remainingQuantity == 0);
+        }
+
+        private async Task<bool> ExecuteReceiveOperationsAsync(StockTransfer transfer, int receivedQuantity,
+            Guid performedByUserId, StockItem? destinationItem, CancellationToken cancellationToken)
+        {
+            var operations = new List<IDirectOperation>
+            {
+                _stockTransferRepository.BuildReceiveOperation(transfer.Id, receivedQuantity, performedByUserId)
+            };
+
+            Guid destinationStockItemId;
+
+            if (destinationItem is not null)
+            {
+                destinationStockItemId = destinationItem.Id;
+                operations.Add(_stockItemRepository.BuildIncrementOperation(destinationItem.Id, receivedQuantity));
+            }
+            else
+            {
+                var newStockItem = StockItem.Create(transfer.ProductId, transfer.DestinationWarehouseId,
+                    transfer.BatchId, receivedQuantity, transfer.Price);
+                destinationStockItemId = newStockItem.Id;
+                operations.Add(_stockItemRepository.BuildCreateOperation(newStockItem));
+            }
+
+            var movement = StockMovement.Create(destinationStockItemId, transfer.ProductId,
+                transfer.DestinationWarehouseId, transfer.BatchId, transfer.Price, StockMovementType.In,
+                receivedQuantity, transfer.Id, transfer.InitiatedByUserId, performedByUserId);
+
+            operations.Add(_stockMovementRepository.BuildCreateOperation(movement));
+
+            operations.Add(_outboxMessageService.BuildCreateOperation(
+                new StockQuantityChangedEvent(transfer.ProductId, transfer.DestinationWarehouseId, Increased: true)));
+
+            return await UnitOfWork.ExecuteInTransactionAsync(operations, cancellationToken);
         }
 
         public async Task<StockTransferServiceDTOs.CancelTransferResponseDTO> CancelAsync(

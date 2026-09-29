@@ -14,5 +14,11 @@ namespace InventoryService.Infrastructure.Database.Repositories
         {
             return MainTable.Where(item => item.SupplierOrderId == supplierOrderId).ToListAsync(cancellationToken);
         }
+
+        public Task<List<SupplierOrderItem>> GetBySupplierOrderIdsAsync(
+            IReadOnlyList<Guid> supplierOrderIds, CancellationToken cancellationToken)
+        {
+            return MainTable.Where(SupplierOrderItem.BelongsToOrders(supplierOrderIds)).ToListAsync(cancellationToken);
+        }
     }
 }

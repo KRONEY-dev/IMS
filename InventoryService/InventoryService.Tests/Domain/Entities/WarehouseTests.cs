@@ -58,5 +58,29 @@ namespace InventoryService.Tests.Domain.Entities
 
             Assert.False(warehouse.IsOpenNow(now));
         }
+
+        [Fact]
+        public void IsOpenNow_OvernightShiftSpillsIntoNextDayThatIsOtherwiseClosed_ReturnsTrue()
+        {
+            var warehouse = CreateWarehouse(WarehouseStatus.Active,
+                (DayOfWeek.Saturday, false, new TimeOnly(22, 0), new TimeOnly(6, 0)),
+                (DayOfWeek.Sunday, true, TimeOnly.MinValue, TimeOnly.MinValue));
+
+            var now = new DateTimeOffset(2023, 1, 1, 2, 0, 0, TimeSpan.Zero);
+
+            Assert.True(warehouse.IsOpenNow(now));
+        }
+
+        [Fact]
+        public void IsOpenNow_TodaysOvernightShiftHasNotStartedYet_DoesNotBorrowTomorrowsHours()
+        {
+            var warehouse = CreateWarehouse(WarehouseStatus.Active,
+                (DayOfWeek.Saturday, true, TimeOnly.MinValue, TimeOnly.MinValue),
+                (DayOfWeek.Sunday, false, new TimeOnly(22, 0), new TimeOnly(6, 0)));
+
+            var now = new DateTimeOffset(2023, 1, 1, 2, 0, 0, TimeSpan.Zero);
+
+            Assert.False(warehouse.IsOpenNow(now));
+        }
     }
 }

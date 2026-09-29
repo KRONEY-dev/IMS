@@ -65,13 +65,14 @@ namespace InventoryService.Application.Services
         {
             var warehouseIds = RequestContext.GetAccessibleWarehouseIds(UserRole.Manager);
             var orders = await _supplierOrderRepository.GetAllAsync(warehouseIds, cancellationToken);
-            var dtos = new List<SupplierOrderServiceDTOs.SupplierOrderDTO>();
 
-            foreach (var order in orders)
-            {
-                var items = await _supplierOrderItemRepository.GetBySupplierOrderIdAsync(order.Id, cancellationToken);
-                dtos.Add(BuildSupplierOrderDTO(order, items));
-            }
+            var orderIds = orders.Select(order => order.Id).ToList();
+            var items = await _supplierOrderItemRepository.GetBySupplierOrderIdsAsync(orderIds, cancellationToken);
+            var itemsByOrderId = items.ToLookup(item => item.SupplierOrderId);
+
+            var dtos = orders
+                .Select(order => BuildSupplierOrderDTO(order, itemsByOrderId[order.Id].ToList()))
+                .ToList();
 
             return new SupplierOrderServiceDTOs.GetAllSupplierOrdersResponseDTO(dtos);
         }

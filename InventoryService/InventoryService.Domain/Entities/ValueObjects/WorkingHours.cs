@@ -22,7 +22,7 @@ namespace InventoryService.Domain.Entities.ValueObjects
             return new WorkingHours(dayOfWeek, isClosed, opensAt, closesAt);
         }
 
-        public bool IsOpenAt(TimeOnly time)
+        public bool CoversStartingToday(TimeOnly time)
         {
             if (IsClosed)
             {
@@ -34,12 +34,14 @@ namespace InventoryService.Domain.Entities.ValueObjects
                 return true;
             }
 
-            if (OpensAt < ClosesAt)
-            {
-                return time >= OpensAt && time < ClosesAt;
-            }
+            return OpensAt < ClosesAt
+                ? time >= OpensAt && time < ClosesAt
+                : time >= OpensAt;
+        }
 
-            return time >= OpensAt || time < ClosesAt;
+        public bool CoversSpilloverFromYesterday(TimeOnly time)
+        {
+            return !IsClosed && OpensAt > ClosesAt && time < ClosesAt;
         }
     }
 }

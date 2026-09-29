@@ -185,6 +185,10 @@ namespace InventoryService.Tests.Application.Services
                 .Setup(repo => repo.GetAllAsync(It.IsAny<IReadOnlyList<Guid>?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync([]);
 
+            _supplierOrderItemRepositoryMock
+                .Setup(repo => repo.GetBySupplierOrderIdsAsync(It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync([]);
+
             var sut = CreateSut();
 
             await sut.GetAllAsync(new SupplierOrderServiceDTOs.GetAllSupplierOrdersRequestDTO(), CancellationToken.None);
@@ -203,6 +207,10 @@ namespace InventoryService.Tests.Application.Services
 
             _supplierOrderRepositoryMock
                 .Setup(repo => repo.GetAllAsync(It.IsAny<IReadOnlyList<Guid>?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync([]);
+
+            _supplierOrderItemRepositoryMock
+                .Setup(repo => repo.GetBySupplierOrderIdsAsync(It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync([]);
 
             var sut = CreateSut();

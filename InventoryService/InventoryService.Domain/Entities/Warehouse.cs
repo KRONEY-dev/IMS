@@ -63,7 +63,15 @@ namespace InventoryService.Domain.Entities
             var utcTimeOfDay = TimeOnly.FromDateTime(utcNow);
             var todaysHours = WorkingHours.Single(entry => entry.DayOfWeek == utcNow.DayOfWeek);
 
-            return todaysHours.IsOpenAt(utcTimeOfDay);
+            if (todaysHours.CoversStartingToday(utcTimeOfDay))
+            {
+                return true;
+            }
+
+            var yesterday = utcNow.DayOfWeek == DayOfWeek.Sunday ? DayOfWeek.Saturday : utcNow.DayOfWeek - 1;
+            var yesterdaysHours = WorkingHours.Single(entry => entry.DayOfWeek == yesterday);
+
+            return yesterdaysHours.CoversSpilloverFromYesterday(utcTimeOfDay);
         }
 
         private static void EnsureCoversEveryDayOfWeek(IReadOnlyList<WorkingHours> workingHours)

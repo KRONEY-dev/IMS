@@ -24,6 +24,7 @@ namespace InventoryService.Application.Exceptions
                 StockItemPriceMismatchException => HttpStatusCode.Conflict,
                 StockItemBatchMismatchException => HttpStatusCode.Conflict,
                 ShipmentInitiationFailedException => HttpStatusCode.Conflict,
+                UniqueConstraintViolationException => HttpStatusCode.Conflict,
                 _ => null
             };
         }
