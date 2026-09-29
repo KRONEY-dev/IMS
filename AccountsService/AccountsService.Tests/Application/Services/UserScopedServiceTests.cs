@@ -267,5 +267,144 @@ namespace AccountsService.Tests.Application.Services
             Assert.Equal(UserRole.Manager, user.Role);
             _unitOfWorkMock.Verify(uow => uow.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         }
+
+        [Fact]
+        public async Task ChangePasswordAsync_WrongCurrentPassword_ThrowsInvalidCredentialsExceptionAndDoesNotSave()
+        {
+            var selfUserId = Guid.NewGuid();
+            SetActorRole(UserRole.Worker, actorUserId: selfUserId);
+
+            var user = new User("Test", "Worker", "worker@ims.local", null, UserRole.Worker, "current-hash");
+
+            _userRepositoryMock.Setup(repo => repo.GetByIdAsync(selfUserId, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+            _passwordHasherServiceMock.Setup(hasher => hasher.Verify("current-hash", "wrong-password")).Returns(false);
+
+            var sut = CreateSut();
+
+            await Assert.ThrowsAsync<InvalidCredentialsException>(() => sut.ChangePasswordAsync(
+                new UserServiceDTOs.ChangePasswordRequestDTO("wrong-password", "NewPassword123!"), CancellationToken.None));
+
+            _unitOfWorkMock.Verify(uow => uow.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+            _userAccessChangeNotifierMock.Verify(
+                notifier => notifier.NotifyAccessRevokedAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task ChangePasswordAsync_CorrectCurrentPassword_ChangesPasswordAndNotifiesAccessRevoked()
+        {
+            var selfUserId = Guid.NewGuid();
+            SetActorRole(UserRole.Worker, actorUserId: selfUserId);
+
+            var user = new User("Test", "Worker", "worker@ims.local", null, UserRole.Worker, "current-hash");
+
+            _userRepositoryMock.Setup(repo => repo.GetByIdAsync(selfUserId, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+            _passwordHasherServiceMock.Setup(hasher => hasher.Verify("current-hash", "CurrentPassword123!")).Returns(true);
+            _passwordHasherServiceMock.Setup(hasher => hasher.Hash("NewPassword123!")).Returns("new-hash");
+
+            var sut = CreateSut();
+
+            await sut.ChangePasswordAsync(
+                new UserServiceDTOs.ChangePasswordRequestDTO("CurrentPassword123!", "NewPassword123!"), CancellationToken.None);
+
+            Assert.Equal("new-hash", user.PasswordHash);
+            _unitOfWorkMock.Verify(uow => uow.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+            _userAccessChangeNotifierMock.Verify(
+                notifier => notifier.NotifyAccessRevokedAsync(user.Id, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task ChangeEmailAsync_NewEmailAlreadyTakenBySomeoneElse_ThrowsEmailAlreadyTakenException()
+        {
+            var selfUserId = Guid.NewGuid();
+            SetActorRole(UserRole.Worker, actorUserId: selfUserId);
+
+            var user = new User("Test", "Worker", "old@ims.local", null, UserRole.Worker, "hash");
+
+            _userRepositoryMock.Setup(repo => repo.GetByIdAsync(selfUserId, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+            _userRepositoryMock.Setup(repo => repo.ExistsByEmailAsync("taken@ims.local", It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+            var sut = CreateSut();
+
+            await Assert.ThrowsAsync<EmailAlreadyTakenException>(() => sut.ChangeEmailAsync(
+                new UserServiceDTOs.ChangeEmailRequestDTO("taken@ims.local"), CancellationToken.None));
+
+            Assert.Equal("old@ims.local", user.Email);
+            _unitOfWorkMock.Verify(uow => uow.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task ChangeEmailAsync_SameEmailAsCurrentIgnoringCase_DoesNotCheckUniquenessAndSaves()
+        {
+            var selfUserId = Guid.NewGuid();
+            SetActorRole(UserRole.Worker, actorUserId: selfUserId);
+
+            var user = new User("Test", "Worker", "same@ims.local", null, UserRole.Worker, "hash");
+
+            _userRepositoryMock.Setup(repo => repo.GetByIdAsync(selfUserId, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+
+            var sut = CreateSut();
+
+            await sut.ChangeEmailAsync(new UserServiceDTOs.ChangeEmailRequestDTO("Same@IMS.local"), CancellationToken.None);
+
+            _userRepositoryMock.Verify(
+                repo => repo.ExistsByEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+            _unitOfWorkMock.Verify(uow => uow.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task ChangeEmailAsync_NewEmail_ChangesEmailAndSaves()
+        {
+            var selfUserId = Guid.NewGuid();
+            SetActorRole(UserRole.Worker, actorUserId: selfUserId);
+
+            var user = new User("Test", "Worker", "old@ims.local", null, UserRole.Worker, "hash");
+
+            _userRepositoryMock.Setup(repo => repo.GetByIdAsync(selfUserId, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+
+            var sut = CreateSut();
+
+            await sut.ChangeEmailAsync(new UserServiceDTOs.ChangeEmailRequestDTO("new@ims.local"), CancellationToken.None);
+
+            Assert.Equal("new@ims.local", user.Email);
+            _unitOfWorkMock.Verify(uow => uow.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task ChangePhoneNumberAsync_NewPhoneNumberAlreadyTakenBySomeoneElse_ThrowsPhoneNumberAlreadyTakenException()
+        {
+            var selfUserId = Guid.NewGuid();
+            SetActorRole(UserRole.Worker, actorUserId: selfUserId);
+
+            var user = new User("Test", "Worker", null, "+10000000001", UserRole.Worker, "hash");
+
+            _userRepositoryMock.Setup(repo => repo.GetByIdAsync(selfUserId, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+            _userRepositoryMock.Setup(repo => repo.ExistsByPhoneNumberAsync("+10000000002", It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+            var sut = CreateSut();
+
+            await Assert.ThrowsAsync<PhoneNumberAlreadyTakenException>(() => sut.ChangePhoneNumberAsync(
+                new UserServiceDTOs.ChangePhoneNumberRequestDTO("+10000000002"), CancellationToken.None));
+
+            Assert.Equal("+10000000001", user.PhoneNumber);
+            _unitOfWorkMock.Verify(uow => uow.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task ChangePhoneNumberAsync_NewPhoneNumber_ChangesPhoneNumberAndSaves()
+        {
+            var selfUserId = Guid.NewGuid();
+            SetActorRole(UserRole.Worker, actorUserId: selfUserId);
+
+            var user = new User("Test", "Worker", null, "+10000000001", UserRole.Worker, "hash");
+
+            _userRepositoryMock.Setup(repo => repo.GetByIdAsync(selfUserId, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+
+            var sut = CreateSut();
+
+            await sut.ChangePhoneNumberAsync(new UserServiceDTOs.ChangePhoneNumberRequestDTO("+10000000002"), CancellationToken.None);
+
+            Assert.Equal("+10000000002", user.PhoneNumber);
+            _unitOfWorkMock.Verify(uow => uow.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        }
     }
 }

@@ -41,6 +41,22 @@ jobs:
           --logger "trx;LogFileName=inventory-tests.trx"
           --results-directory ./TestResults
 
+      - name: Test ApiGateway
+        run: >
+          dotnet test ApiGateway.Tests/ApiGateway.Tests.csproj
+          --no-build --configuration Release
+          --collect:"XPlat Code Coverage"
+          --logger "trx;LogFileName=api-gateway-tests.trx"
+          --results-directory ./TestResults
+
+      - name: Test Shared.Kernel.Redis
+        run: >
+          dotnet test Shared.Kernel.Redis.Tests/Shared.Kernel.Redis.Tests.csproj
+          --no-build --configuration Release
+          --collect:"XPlat Code Coverage"
+          --logger "trx;LogFileName=shared-kernel-redis-tests.trx"
+          --results-directory ./TestResults
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v7

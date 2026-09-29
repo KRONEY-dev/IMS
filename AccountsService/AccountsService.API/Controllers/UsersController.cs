@@ -45,5 +45,26 @@ namespace AccountsService.API.Controllers
         {
             return Ok(await MainService.RemoveWarehouseAsync(request, cancellationToken));
         }
+
+        [HttpPost]
+        public async Task<ActionResult<UserServiceDTOs.ChangePasswordResponseDTO>> ChangePassword(
+            UserServiceDTOs.ChangePasswordRequestDTO request, CancellationToken cancellationToken)
+        {
+            return Ok(await MainService.ChangePasswordAsync(request, cancellationToken));
+        }
+
+        [HttpPost]
+        public async Task<ActionResult<UserServiceDTOs.ChangeEmailResponseDTO>> ChangeEmail(
+            UserServiceDTOs.ChangeEmailRequestDTO request, CancellationToken cancellationToken)
+        {
+            return Ok(await MainService.ChangeEmailAsync(request, cancellationToken));
+        }
+
+        [HttpPost]
+        public async Task<ActionResult<UserServiceDTOs.ChangePhoneNumberResponseDTO>> ChangePhoneNumber(
+            UserServiceDTOs.ChangePhoneNumberRequestDTO request, CancellationToken cancellationToken)
+        {
+            return Ok(await MainService.ChangePhoneNumberAsync(request, cancellationToken));
+        }
     }
 }

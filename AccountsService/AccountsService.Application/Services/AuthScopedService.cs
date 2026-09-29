@@ -96,17 +96,7 @@ namespace AccountsService.Application.Services
 
             if (token.IsRevoked())
             {
-                var withinGracePeriod = DateTime.UtcNow - token.RevokedAt!.Value <= _jwtSettings.RefreshTokenReuseGracePeriod;
-
-                if (withinGracePeriod)
-                {
-                    throw new InvalidRefreshTokenException();
-                }
-
-                var tokensRevokeOperation = _refreshTokenRepository.RevokeChainBySessionId(token.SessionId);
-                await UnitOfWork.ExecuteInTransactionAsync(tokensRevokeOperation, cancellationToken);
-
-                throw new RefreshTokenReuseDetectedException(token.SessionId);
+                throw await BuildReuseExceptionAsync(token, cancellationToken);
             }
 
             if (token.IsExpired())
@@ -130,14 +120,35 @@ namespace AccountsService.Application.Services
 
             if (!rotated)
             {
-                var tokensRevokeOperation = _refreshTokenRepository.RevokeChainBySessionId(token.SessionId);
-                await UnitOfWork.ExecuteInTransactionAsync(tokensRevokeOperation, cancellationToken);
+                // Someone else rotated this exact token between our read and our write attempt. Our
+                // tracked copy is stale (EF's identity map won't re-query it), so reload it in place
+                // to see the real RevokedAt - that way a genuinely concurrent race (two requests
+                // racing the same still-valid token) is judged by the same grace period as a
+                // sequential reuse, instead of unconditionally revoking the winner's brand-new
+                // session for a race it did nothing wrong in.
+                await _refreshTokenRepository.ReloadAsync(token, cancellationToken);
 
-                throw new RefreshTokenReuseDetectedException(token.SessionId);
+                throw await BuildReuseExceptionAsync(token, cancellationToken);
             }
 
             return new AuthServiceDTOs.RefreshAccessTokenResponseDTO(tokenData.AccessToken,
                 new AuthServiceDTOs.RefreshTokenDTO(newRefreshToken.Id, tokenData.RawSecret));
+        }
+
+        private async Task<Exception> BuildReuseExceptionAsync(RefreshToken revokedToken, CancellationToken cancellationToken)
+        {
+            var withinGracePeriod = revokedToken.RevokedAt is not null
+                && DateTime.UtcNow - revokedToken.RevokedAt.Value <= _jwtSettings.RefreshTokenReuseGracePeriod;
+
+            if (withinGracePeriod)
+            {
+                return new InvalidRefreshTokenException();
+            }
+
+            var tokensRevokeOperation = _refreshTokenRepository.RevokeChainBySessionId(revokedToken.SessionId);
+            await UnitOfWork.ExecuteInTransactionAsync(tokensRevokeOperation, cancellationToken);
+
+            return new RefreshTokenReuseDetectedException(revokedToken.SessionId);
         }
 
         public async Task<AuthServiceDTOs.LogoutResponseDTO> LogoutAsync(AuthServiceDTOs.LogoutRequestDTO request,

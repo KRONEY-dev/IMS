@@ -168,6 +168,63 @@ namespace AccountsService.Application.Services
             return new UserServiceDTOs.RemoveWarehouseResponseDTO();
         }
 
+        public async Task<UserServiceDTOs.ChangePasswordResponseDTO> ChangePasswordAsync(
+            UserServiceDTOs.ChangePasswordRequestDTO request, CancellationToken cancellationToken)
+        {
+            var user = await _userRepository.GetByIdAsync(RequestContext.UserId, cancellationToken)
+                ?? throw new NotFoundException(nameof(User), RequestContext.UserId);
+
+            if (!_passwordHasherService.Verify(user.PasswordHash, request.CurrentPassword))
+            {
+                throw new InvalidCredentialsException();
+            }
+
+            user.ChangePassword(_passwordHasherService.Hash(request.NewPassword));
+            await UnitOfWork.SaveChangesAsync(cancellationToken);
+
+            await _userAccessChangeNotifier.NotifyAccessRevokedAsync(user.Id, cancellationToken);
+
+            return new UserServiceDTOs.ChangePasswordResponseDTO();
+        }
+
+        public async Task<UserServiceDTOs.ChangeEmailResponseDTO> ChangeEmailAsync(
+            UserServiceDTOs.ChangeEmailRequestDTO request, CancellationToken cancellationToken)
+        {
+            var user = await _userRepository.GetByIdAsync(RequestContext.UserId, cancellationToken)
+                ?? throw new NotFoundException(nameof(User), RequestContext.UserId);
+
+            var normalizedEmail = request.NewEmail.Trim().ToLowerInvariant();
+
+            if (normalizedEmail != user.Email && await _userRepository.ExistsByEmailAsync(normalizedEmail, cancellationToken))
+            {
+                throw new EmailAlreadyTakenException(normalizedEmail);
+            }
+
+            user.ChangeEmail(normalizedEmail);
+            await UnitOfWork.SaveChangesAsync(cancellationToken);
+
+            return new UserServiceDTOs.ChangeEmailResponseDTO();
+        }
+
+        public async Task<UserServiceDTOs.ChangePhoneNumberResponseDTO> ChangePhoneNumberAsync(
+            UserServiceDTOs.ChangePhoneNumberRequestDTO request, CancellationToken cancellationToken)
+        {
+            var user = await _userRepository.GetByIdAsync(RequestContext.UserId, cancellationToken)
+                ?? throw new NotFoundException(nameof(User), RequestContext.UserId);
+
+            var normalizedPhoneNumber = request.NewPhoneNumber.Trim();
+
+            if (normalizedPhoneNumber != user.PhoneNumber && await _userRepository.ExistsByPhoneNumberAsync(normalizedPhoneNumber, cancellationToken))
+            {
+                throw new PhoneNumberAlreadyTakenException(normalizedPhoneNumber);
+            }
+
+            user.ChangePhoneNumber(normalizedPhoneNumber);
+            await UnitOfWork.SaveChangesAsync(cancellationToken);
+
+            return new UserServiceDTOs.ChangePhoneNumberResponseDTO();
+        }
+
         // A Manager can only manage Workers, and only if they share at least one warehouse.
         private void EnsureManagerCanManageWorker(User targetUser)
         {

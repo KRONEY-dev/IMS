@@ -39,6 +39,7 @@ namespace AccountsService.Tests.Integration.Fixtures
 
             services.AddScoped<IUnitOfWork, UnitOfWorkScoped>();
             services.AddScoped<IRefreshTokenRepository, RefreshTokenRepositoryScoped>();
+            services.AddScoped<IUserRepository, UserRepositoryScoped>();
 
             _serviceProvider = services.BuildServiceProvider();
             ScopeFactory = _serviceProvider.GetRequiredService<IServiceScopeFactory>();

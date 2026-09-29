@@ -51,4 +51,31 @@ namespace AccountsService.Application.Validators
             RuleFor(x => x.WarehouseId).NotEmpty();
         }
     }
+
+    public class ChangePasswordRequestDTOValidator : AbstractValidator<UserServiceDTOs.ChangePasswordRequestDTO>
+    {
+        public ChangePasswordRequestDTOValidator()
+        {
+            RuleFor(x => x.CurrentPassword).NotEmpty();
+            RuleFor(x => x.NewPassword).NotEmpty().MinimumLength(8);
+            RuleFor(x => x.NewPassword).NotEqual(x => x.CurrentPassword)
+                .WithMessage("New password must be different from the current password.");
+        }
+    }
+
+    public class ChangeEmailRequestDTOValidator : AbstractValidator<UserServiceDTOs.ChangeEmailRequestDTO>
+    {
+        public ChangeEmailRequestDTOValidator()
+        {
+            RuleFor(x => x.NewEmail).NotEmpty().EmailAddress();
+        }
+    }
+
+    public class ChangePhoneNumberRequestDTOValidator : AbstractValidator<UserServiceDTOs.ChangePhoneNumberRequestDTO>
+    {
+        public ChangePhoneNumberRequestDTOValidator()
+        {
+            RuleFor(x => x.NewPhoneNumber).NotEmpty().Matches(@"^\+?[1-9]\d{7,14}$");
+        }
+    }
 }

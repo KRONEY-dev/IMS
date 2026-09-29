@@ -26,5 +26,14 @@ namespace AccountsService.Application.Services.DTOs
 
         public record RemoveWarehouseRequestDTO(Guid TargetUserId, Guid WarehouseId);
         public record RemoveWarehouseResponseDTO;
+
+        public record ChangePasswordRequestDTO(string CurrentPassword, string NewPassword);
+        public record ChangePasswordResponseDTO;
+
+        public record ChangeEmailRequestDTO(string NewEmail);
+        public record ChangeEmailResponseDTO;
+
+        public record ChangePhoneNumberRequestDTO(string NewPhoneNumber);
+        public record ChangePhoneNumberResponseDTO;
     }
 }
